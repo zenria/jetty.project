@@ -57,6 +57,7 @@ public class BaseAuthModule implements ServerAuthModule, ServerAuthContext
         return SUPPORTED_MESSAGE_TYPES;
     }
 
+    
     public BaseAuthModule()
     {
     }
@@ -128,9 +129,11 @@ public class BaseAuthModule implements ServerAuthModule, ServerAuthContext
     {
         CredentialValidationCallback credValidationCallback = new CredentialValidationCallback(clientSubject, username, credential);
         callbackHandler.handle(new Callback[] { credValidationCallback });
+        System.err.println("CredentialValidationCallback.getResult="+credValidationCallback.getResult());
         if (credValidationCallback.getResult())
         {
             Set<LoginCallbackImpl> loginCallbacks = clientSubject.getPrivateCredentials(LoginCallbackImpl.class);
+            System.err.println("LoginCallbackImpls.isEmpty="+loginCallbacks.isEmpty());
             if (!loginCallbacks.isEmpty())
             {
                 LoginCallbackImpl loginCallback = loginCallbacks.iterator().next();

@@ -252,8 +252,34 @@ public class JAASLoginService extends AbstractLifeCycle implements LoginService
     /* ------------------------------------------------------------ */
     public boolean validate(UserIdentity user)
     {
-        // TODO optionally check user is still valid
-        return true;
+        if (user == null)
+            return false;
+        Subject subject = user.getSubject();
+        if (subject == null)
+            return false;
+   
+        Set<JAASUserPrincipal> principals = subject.getPrincipals(JAASUserPrincipal.class);
+        if (principals == null || principals.isEmpty())
+            return false;
+        boolean result = false;
+        for (JAASUserPrincipal p:principals)
+        {
+            if (p.getSubject() == null)
+                break;
+            
+            if (p.getName() == null)
+                break;
+            
+            //TODO think of a better check other than if the names equate. 
+            //Ideally we'd like to ask the particular jaas LoginModule to do some kind of validation,
+            //or see if the JAASUserInfo is still set on the Subject, but that is specific to jetty-only LoginModule impls.
+            if (p.getName().equals(user.getUserPrincipal().getName()))
+            {
+                result = true;
+                break;
+            }
+        }
+        return result;
     }
 
     /* ------------------------------------------------------------ */

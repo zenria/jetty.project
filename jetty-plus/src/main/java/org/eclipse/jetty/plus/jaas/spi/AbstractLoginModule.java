@@ -206,6 +206,7 @@ public abstract class AbstractLoginModule implements LoginModule
      */
     public boolean login() throws LoginException
     {
+        System.err.println("LoginModule.login called");
         try
         {  
             if (callbackHandler == null)
