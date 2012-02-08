@@ -27,6 +27,7 @@ import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.SessionManager;
 import org.eclipse.jetty.server.handler.ContextHandler;
+import org.eclipse.jetty.server.session.AbstractSession;
 import org.eclipse.jetty.server.session.AbstractSessionIdManager;
 import org.eclipse.jetty.server.session.SessionHandler;
 import org.eclipse.jetty.util.log.Log;
@@ -511,6 +512,40 @@ public class MongoSessionIdManager extends AbstractSessionIdManager
                 }
             }
         }      
+    }
+    
+    
+    /* ------------------------------------------------------------ */
+    public String renewSessionId(HttpServletRequest request, HttpSession session)
+    {
+        if (session == null)
+            return null;
+
+        String oldId = ((AbstractSession)session).getClusterId();
+        String newId = newSessionId(null, System.currentTimeMillis());
+        
+        Handler[] contexts = _server.getChildHandlersByClass(ContextHandler.class);     
+        synchronized (_sessionsIds)
+        {
+            _sessionsIds.remove(oldId);
+            _sessionsIds.add(newId);
+            //tell each context's sessionmanager to update sessionids matching the old id
+            for (int i=0; contexts!=null && i<contexts.length; i++)
+            {
+                SessionHandler sessionHandler = (SessionHandler)((ContextHandler)contexts[i]).getChildHandlerByClass(SessionHandler.class);
+                if (sessionHandler != null) 
+                {
+                    SessionManager manager = sessionHandler.getSessionManager();
+
+                    if (manager != null && manager instanceof MongoSessionManager)
+                    {
+                        ((MongoSessionManager)manager).replaceSessionId(request, oldId, newId);
+                    }
+                }
+            }
+            
+        }
+        return newId;
     }
 
     /* ------------------------------------------------------------ */

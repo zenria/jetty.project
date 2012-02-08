@@ -86,14 +86,16 @@ public class HashedSession extends AbstractSession
         }
     }
     
+    
+    
     /* ------------------------------------------------------------ */
     @Override
-    public String renewSessionId(HttpServletRequest request, HttpServletResponse response)
+    public void replaceSessionId(HttpServletRequest request, String newId)
     {
-        delete(); //delete any saved file for the current session id
-        return super.renewSessionId(request, response);
+        delete(); //delete any saved file for the old session id
+        super.replaceSessionId(request, newId);
     }
-    
+
     /* ------------------------------------------------------------ */
     synchronized void save(boolean reactivate)
     {

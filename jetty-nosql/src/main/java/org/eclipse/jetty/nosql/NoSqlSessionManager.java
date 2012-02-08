@@ -171,6 +171,17 @@ public abstract class NoSqlSessionManager extends AbstractSessionManager impleme
         
     }
     
+    /* ------------------------------------------------------------ */
+    @Override
+    public void replaceSessionId(HttpServletRequest request, String oldId, String newId)
+    {
+        super.replaceSessionId(request, oldId, newId);
+
+        NoSqlSession session = _sessions.remove(oldId);
+        if (session != null)
+            _sessions.put(newId, session);
+    }
+    
     
     /* ------------------------------------------------------------ */
     /**

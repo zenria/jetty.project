@@ -305,7 +305,17 @@ public class JDBCSessionManager extends AbstractSessionManager
              _data.setAttributeMap(_jdbcAttributes);
          }
 
+         
+         
          @Override
+        public void setClusterId(String id)
+        {
+            super.setClusterId(id);
+            _data.setId(id);
+            _dirty = true;
+        }
+
+        @Override
         public void setAttribute (String name, Object value)
          {
              super.setAttribute(name, value);
@@ -386,16 +396,6 @@ public class JDBCSessionManager extends AbstractSessionManager
                 LOG.debug("Timing out session id="+getClusterId());
             super.timeout();
         }
-
-        @Override
-        public String renewSessionId(HttpServletRequest request, HttpServletResponse response)
-        {
-            String id = super.renewSessionId(request, response);
-            _data.setId(id);
-            _dirty=true;
-            return id;
-        }  
-        
     }
 
 

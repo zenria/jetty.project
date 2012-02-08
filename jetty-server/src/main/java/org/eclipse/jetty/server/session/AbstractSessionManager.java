@@ -828,10 +828,10 @@ public abstract class AbstractSessionManager extends AbstractLifeCycle implement
     {
         //get Session that has oldId and change it to newId
         HttpSession session = getSession(oldId);
+        
         if (session != null)
         {
-            ((AbstractSession)session).setClusterId(newId);    
-            ((AbstractSession)session).setNodeId(getSessionIdManager().getNodeId(newId, request));
+            ((AbstractSession)session).replaceSessionId(request, newId);          
         }
     }
     

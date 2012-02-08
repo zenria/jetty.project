@@ -313,6 +313,12 @@ public abstract class AbstractSession implements AbstractSessionManager.SessionI
        return _manager.renewSessionId(this, request, response);
     }
     
+    public void replaceSessionId (HttpServletRequest request, String newId)
+    {
+        setClusterId(newId);    
+        setNodeId(_manager._sessionIdManager.getNodeId(newId, request));
+    }
+    
 
     /* ------------------------------------------------------------- */
     public void invalidate() throws IllegalStateException

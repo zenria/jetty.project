@@ -111,6 +111,8 @@ public class MongoSessionManager extends NoSqlSessionManager
     @Override
     protected synchronized Object save(NoSqlSession session, Object version, boolean activateAfterSave)
     {
+        
+        //TODO How to handle changing the Mongo object with the old session id
         try
         {
             __log.debug("MongoSessionManager:save:" + session);

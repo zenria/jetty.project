@@ -16,6 +16,9 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
 import org.eclipse.jetty.server.session.AbstractSession;
 import org.eclipse.jetty.util.log.Log;
 import org.eclipse.jetty.util.log.Logger;
@@ -171,5 +174,12 @@ public class NoSqlSession extends AbstractSession
     {
     	return _version;
     }
+    
+    @Override
+    public void replaceSessionId(HttpServletRequest request, String newId)
+    {
+        super.replaceSessionId(request, newId);
+        //TODO where to set the new id???
+    }  
     
 }
