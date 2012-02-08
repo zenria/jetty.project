@@ -336,6 +336,41 @@ public class JDBCSessionIdManager extends AbstractSessionIdManager
     }
     
 
+    public String renewSessionId (HttpServletRequest request, HttpSession session)
+    {
+        if (session == null)
+            return null;
+        
+        String oldId = ((AbstractSession)session).getClusterId();
+        String newId = newSessionId(null, System.currentTimeMillis());
+        
+        System.err.println("old id="+oldId+" new id="+newId);
+        synchronized (_sessionIds)
+        {
+            //Get rid of the oldId, as it is no longer used
+            _sessionIds.remove(oldId);
+            
+            //tell all contexts that may have a session object with this id to
+            //change them
+            Handler[] contexts = _server.getChildHandlersByClass(ContextHandler.class);
+            for (int i=0; contexts!=null && i<contexts.length; i++)
+            {
+                SessionHandler sessionHandler = (SessionHandler)((ContextHandler)contexts[i]).getChildHandlerByClass(SessionHandler.class);
+                if (sessionHandler != null) 
+                {
+                    SessionManager manager = sessionHandler.getSessionManager();
+
+                    if (manager != null && manager instanceof JDBCSessionManager)
+                    {
+                        ((JDBCSessionManager)manager).replaceSessionId(request, oldId, newId);
+                    }
+                }
+            }
+            _sessionIds.add(newId);
+        }
+        return newId;
+    }
+
     /** 
      * Get the session id without any node identifier suffix.
      * 

@@ -24,6 +24,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import javax.servlet.ServletRequest;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import javax.servlet.http.HttpSessionAttributeListener;
 import javax.servlet.http.HttpSessionBindingEvent;
@@ -34,6 +35,7 @@ import javax.servlet.http.HttpSessionListener;
 import org.eclipse.jetty.http.HttpCookie;
 import org.eclipse.jetty.server.AbstractConnector;
 import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.server.Response;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.SessionIdManager;
 import org.eclipse.jetty.server.SessionManager;
@@ -249,8 +251,8 @@ public abstract class AbstractSessionManager extends AbstractLifeCycle implement
     /* ------------------------------------------------------------ */
     public HttpSession getHttpSession(String nodeId)
     {
+       
         String cluster_id = getSessionIdManager().getClusterId(nodeId);
-
         AbstractSession session = getSession(cluster_id);
         if (session!=null && !session.getNodeId().equals(nodeId))
             session.setIdChanged(true);
@@ -796,6 +798,46 @@ public abstract class AbstractSessionManager extends AbstractLifeCycle implement
         _checkingRemoteSessionIdEncoding=remote;
     }
     
+    
+    
+    
+    /* ------------------------------------------------------------ */
+    /** 
+     * @see org.eclipse.jetty.server.SessionManager#renewSessionId(javax.servlet.http.HttpSession, javax.servlet.http.HttpServletRequest, javax.servlet.http.HttpServletResponse)
+     */
+    public String renewSessionId(HttpSession session, HttpServletRequest request, HttpServletResponse response)
+    {
+       if (__log.isDebugEnabled()) __log.debug("Renewing sessionId, old="+session.getId());
+        
+        String newId = getSessionIdManager().renewSessionId(request, session);
+        
+        //ensure cookie gets updated
+        ((Response)response).addCookie(getSessionCookie(session,request.getContextPath(),request.isSecure()));
+        
+        if (__log.isDebugEnabled()) __log.debug("Renewed sessionId new="+session.getId());
+        return newId;
+    }
+
+
+
+    /* ------------------------------------------------------------ */
+    /** 
+     * @see org.eclipse.jetty.server.SessionManager#replaceSessionId(javax.servlet.http.HttpServletRequest, java.lang.String, java.lang.String)
+     */
+    public void replaceSessionId (HttpServletRequest request, String oldId, String newId)
+    {
+        //get Session that has oldId and change it to newId
+        HttpSession session = getSession(oldId);
+        if (session != null)
+        {
+            ((AbstractSession)session).setClusterId(newId);    
+            ((AbstractSession)session).setNodeId(getSessionIdManager().getNodeId(newId, request));
+        }
+    }
+    
+    
+
+
     /* ------------------------------------------------------------ */
     /* ------------------------------------------------------------ */
     /* ------------------------------------------------------------ */

@@ -17,6 +17,7 @@ import java.util.EventListener;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
 import org.eclipse.jetty.http.HttpCookie;
@@ -340,5 +341,23 @@ public interface SessionManager extends LifeCycle
      * @param remote True if absolute URLs are check for remoteness before being session encoded.
      */
     public void setCheckingRemoteSessionIdEncoding(boolean remote);
+    
+    
+    /**
+     * Assign an new id to an existing session.
+     * @param session
+     * @param request
+     * @param response
+     * @return
+     */
+    public String renewSessionId (HttpSession session, HttpServletRequest request, HttpServletResponse response);
+    
+    
+    /**
+     * @param request
+     * @param oldId
+     * @param newId
+     */
+    public void replaceSessionId (HttpServletRequest request, String oldId, String newId);
 
 }

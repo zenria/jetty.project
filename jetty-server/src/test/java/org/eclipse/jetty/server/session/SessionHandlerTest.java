@@ -589,5 +589,17 @@ public class SessionHandlerTest
         public void changeSessionIdOnAuthentication(HttpServletRequest request, HttpServletResponse response)
         {
         }
+
+        public String renewSessionId(HttpSession session, HttpServletRequest request, HttpServletResponse response)
+        {
+            // TODO Auto-generated method stub
+            return null;
+        }
+
+        public void replaceSessionId(HttpServletRequest request, String oldId, String newId)
+        {
+            // TODO Auto-generated method stub
+            
+        }
     }
 }

@@ -24,10 +24,17 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletRequestWrapper;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
+import org.eclipse.jetty.server.Handler;
+import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.SessionIdManager;
+import org.eclipse.jetty.server.SessionManager;
+import org.eclipse.jetty.server.handler.ContextHandler;
 
 /* ------------------------------------------------------------ */
 /**
@@ -213,5 +220,49 @@ public class HashSessionIdManager extends AbstractSessionIdManager
             sessions.clear();
         }
     }
+    
+    
+    /* ------------------------------------------------------------ */
+    /** 
+     * @see org.eclipse.jetty.server.SessionIdManager#renewSessionId(javax.servlet.http.HttpServletRequest, javax.servlet.http.HttpSession)
+     */
+    public String renewSessionId(HttpServletRequest request, HttpSession session)
+    {
+        if (session == null)
+            return null;
 
+        String oldId = ((AbstractSession)session).getClusterId();
+        String newId = newSessionId(null, System.currentTimeMillis());
+        
+        //Get a Request instance, possibly unwrapping if needed
+        ServletRequest r = request;
+        while (!(r instanceof Request))
+            r = ((ServletRequestWrapper)r).getRequest();
+        Request baseRequest = (Request)r;      
+        
+        Collection<WeakReference<HttpSession>> sessions;
+        Server server = baseRequest.getContext().getContextHandler().getServer();
+        Handler[] contexts = server.getChildHandlersByClass(ContextHandler.class);     
+        synchronized (this)
+        {
+            //TODO why are we holding the lock throughout the calls to HashSessionManager?
+            //tell each context's sessionmanager to update sessionids matching the old id
+            sessions = _sessions.remove(oldId);
+            for (int i=0; contexts!=null && i<contexts.length; i++)
+            {
+                SessionHandler sessionHandler = (SessionHandler)((ContextHandler)contexts[i]).getChildHandlerByClass(SessionHandler.class);
+                if (sessionHandler != null) 
+                {
+                    SessionManager manager = sessionHandler.getSessionManager();
+
+                    if (manager != null && manager instanceof HashSessionManager)
+                    {
+                        ((HashSessionManager)manager).replaceSessionId(request, oldId, newId);
+                    }
+                }
+            }
+            _sessions.put(newId, new HashSet<WeakReference<HttpSession>>(sessions));
+        }
+        return newId;
+    }    
 }

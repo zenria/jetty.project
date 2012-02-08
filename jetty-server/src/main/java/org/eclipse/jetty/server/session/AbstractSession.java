@@ -12,12 +12,14 @@ import java.util.Set;
 
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSessionActivationListener;
 import javax.servlet.http.HttpSessionBindingEvent;
 import javax.servlet.http.HttpSessionBindingListener;
 import javax.servlet.http.HttpSessionContext;
 import javax.servlet.http.HttpSessionEvent;
 
+import org.eclipse.jetty.server.Response;
 import org.eclipse.jetty.util.log.Logger;
 
 /**
@@ -33,8 +35,8 @@ public abstract class AbstractSession implements AbstractSessionManager.SessionI
     final static Logger LOG = SessionHandler.LOG;
     
     private final AbstractSessionManager _manager;
-    private final String _clusterId; // ID unique within cluster
-    private final String _nodeId;    // ID unique within node
+    private String _clusterId; // id without any node suffix
+    private String _nodeId;    // id with node suffix
     private final Map<String,Object> _attributes=new HashMap<String, Object>();
     private boolean _idChanged;
     private final long _created;
@@ -176,6 +178,22 @@ public abstract class AbstractSession implements AbstractSessionManager.SessionI
     {
         return _clusterId;
     }
+    
+    
+    /* ------------------------------------------------------------- */
+    public void setNodeId(String id)
+    {
+        _nodeId = id;
+    }
+
+    /* ------------------------------------------------------------- */
+    public void setClusterId(String id)
+    {
+        _clusterId = id;
+    }
+    
+    
+    
 
     /* ------------------------------------------------------------- */
     public long getLastAccessedTime() throws IllegalStateException
@@ -288,6 +306,13 @@ public abstract class AbstractSession implements AbstractSessionManager.SessionI
             }
         }
     }
+    
+    /* ------------------------------------------------------------- */
+    public String renewSessionId (HttpServletRequest request, HttpServletResponse response) 
+    {
+       return _manager.renewSessionId(this, request, response);
+    }
+    
 
     /* ------------------------------------------------------------- */
     public void invalidate() throws IllegalStateException
@@ -426,7 +451,9 @@ public abstract class AbstractSession implements AbstractSessionManager.SessionI
     {
         _idChanged=changed;
     }
-
+    
+    
+    
     /* ------------------------------------------------------------- */
     public void setMaxInactiveInterval(int secs)
     {

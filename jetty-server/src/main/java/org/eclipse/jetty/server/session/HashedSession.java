@@ -11,6 +11,7 @@ import java.io.OutputStream;
 import java.util.Enumeration;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 import org.eclipse.jetty.util.IO;
 import org.eclipse.jetty.util.log.Log;
@@ -70,7 +71,12 @@ public class HashedSession extends AbstractSession
     throws IllegalStateException
     {
         super.doInvalidate();
-        
+        delete();
+    }
+    
+    /* ------------------------------------------------------------ */
+    void delete ()
+    {
         // Remove from the disk
         if (_hashSessionManager._storeDir!=null && getId()!=null)
         {
@@ -79,7 +85,15 @@ public class HashedSession extends AbstractSession
             f.delete();
         }
     }
-
+    
+    /* ------------------------------------------------------------ */
+    @Override
+    public String renewSessionId(HttpServletRequest request, HttpServletResponse response)
+    {
+        delete(); //delete any saved file for the current session id
+        return super.renewSessionId(request, response);
+    }
+    
     /* ------------------------------------------------------------ */
     synchronized void save(boolean reactivate)
     {
@@ -124,6 +138,8 @@ public class HashedSession extends AbstractSession
             }
         }
     }
+   
+
     /* ------------------------------------------------------------ */
     public synchronized void save(OutputStream os)  throws IOException 
     {

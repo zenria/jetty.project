@@ -133,7 +133,8 @@ public abstract class AbstractSessionIdManager extends AbstractLifeCycle impleme
                     id=_workerName + id;
             }
 
-            request.setAttribute(__NEW_SESSION_ID,id);
+            if (request != null)
+                request.setAttribute(__NEW_SESSION_ID,id);
             return id;
         }
     }

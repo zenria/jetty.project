@@ -32,6 +32,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 import javax.servlet.http.HttpSessionEvent;
 import javax.servlet.http.HttpSessionListener;
 
@@ -86,7 +88,7 @@ public class JDBCSessionManager extends AbstractSessionManager
      */
     public class SessionData
     {
-        private final String _id;
+        private String _id;
         private String _rowId;
         private long _accessed;
         private long _lastAccessed;
@@ -121,6 +123,11 @@ public class JDBCSessionManager extends AbstractSessionManager
         public synchronized String getId ()
         {
             return _id;
+        }
+        
+        public synchronized void setId (String id)
+        {
+            _id = id;
         }
 
         public synchronized long getCreated ()
@@ -379,6 +386,16 @@ public class JDBCSessionManager extends AbstractSessionManager
                 LOG.debug("Timing out session id="+getClusterId());
             super.timeout();
         }
+
+        @Override
+        public String renewSessionId(HttpServletRequest request, HttpServletResponse response)
+        {
+            String id = super.renewSessionId(request, response);
+            _data.setId(id);
+            _dirty=true;
+            return id;
+        }  
+        
     }
 
 
@@ -591,7 +608,23 @@ public class JDBCSessionManager extends AbstractSessionManager
         return size;
     }
 
+   
+    /** 
+     * @see org.eclipse.jetty.server.session.AbstractSessionManager#replaceSessionId(javax.servlet.http.HttpServletRequest, java.lang.String, java.lang.String)
+     */
+    public void replaceSessionId (HttpServletRequest request, String oldId, String newId)
+    {
+        super.replaceSessionId(request, oldId, newId);
+       
+        synchronized (this)
+        {
+            HttpSession session =  _sessions.remove(oldId);
+            if (session != null)
+                _sessions.put(newId, (AbstractSession)session);
+        }
+    }
 
+    
     /**
      * Start the session manager.
      *
@@ -831,7 +864,7 @@ public class JDBCSessionManager extends AbstractSessionManager
                           " where sessionId = ? and contextPath = ? and virtualHost = ?";
 
         __updateSession = "update "+((JDBCSessionIdManager)_sessionIdManager)._sessionTable+
-                          " set lastNode = ?, accessTime = ?, lastAccessTime = ?, lastSavedTime = ?, expiryTime = ?, map = ? where "+__sessionTableRowId+" = ?";
+                          " set lastNode = ?, accessTime = ?, lastAccessTime = ?, lastSavedTime = ?, expiryTime = ?, map = ?, sessionId = ? where "+__sessionTableRowId+" = ?";
 
         __updateSessionNode = "update "+((JDBCSessionIdManager)_sessionIdManager)._sessionTable+
                               " set lastNode = ? where "+__sessionTableRowId+" = ?";
@@ -1008,7 +1041,8 @@ public class JDBCSessionManager extends AbstractSessionManager
             ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
 
             statement.setBinaryStream(6, bais, bytes.length);//attribute map as blob
-            statement.setString(7, data.getRowId()); //rowId
+            statement.setString(7, data.getId()); //session id
+            statement.setString(8, data.getRowId()); //rowId
             statement.executeUpdate();
 
             data.setLastSaved(now);

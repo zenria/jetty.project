@@ -29,6 +29,8 @@ import java.util.concurrent.ConcurrentMap;
 
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 
 import org.eclipse.jetty.server.handler.ContextHandler;
 import org.eclipse.jetty.util.log.Logger;
@@ -389,6 +391,18 @@ public class HashSessionManager extends AbstractSessionManager
             sessions=new ArrayList<HashedSession>(_sessions.values());
         }
     }
+    
+    /* ------------------------------------------------------------ */
+    @Override
+    public void replaceSessionId(HttpServletRequest request, String oldId, String newId)
+    {
+        super.replaceSessionId(request, oldId, newId);
+
+        HashedSession session = _sessions.remove(oldId);
+        if (session != null)
+            _sessions.put(newId, session);
+    }
+    
 
     /* ------------------------------------------------------------ */
     @Override
@@ -396,6 +410,7 @@ public class HashSessionManager extends AbstractSessionManager
     {
         return new HashedSession(this, request);
     }
+
 
     /* ------------------------------------------------------------ */
     protected AbstractSession newSession(long created, long accessed, String clusterId)

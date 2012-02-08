@@ -24,6 +24,7 @@ import javax.servlet.http.HttpSession;
 import org.eclipse.jetty.security.Authenticator;
 import org.eclipse.jetty.security.IdentityService;
 import org.eclipse.jetty.security.LoginService;
+import org.eclipse.jetty.server.session.AbstractSession;
 
 public abstract class LoginAuthenticator implements Authenticator
 {
@@ -66,6 +67,10 @@ public abstract class LoginAuthenticator implements Authenticator
         {
             synchronized (this)
             {
+                
+                ((AbstractSession)httpSession).renewSessionId(request, response);
+                httpSession.setAttribute(SESSION_SECURED,Boolean.TRUE);
+                /*
                 Map<String,Object> attributes = new HashMap<String, Object>();
                 for (Enumeration<String> e=httpSession.getAttributeNames();e.hasMoreElements();)
                 {
@@ -78,6 +83,7 @@ public abstract class LoginAuthenticator implements Authenticator
                 httpSession.setAttribute(SESSION_SECURED,Boolean.TRUE);
                 for (Map.Entry<String, Object> entry: attributes.entrySet())
                     httpSession.setAttribute(entry.getKey(),entry.getValue());
+                */
             }
         }
         
