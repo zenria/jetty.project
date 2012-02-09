@@ -313,6 +313,7 @@ public abstract class NoSqlSessionManager extends AbstractSessionManager impleme
         _saveAllAttributes = saveAllAttributes;
     }
     
+    
     /* ------------------------------------------------------------ */
     abstract protected NoSqlSession loadSession(String clusterId);
     
@@ -324,5 +325,9 @@ public abstract class NoSqlSessionManager extends AbstractSessionManager impleme
 
     /* ------------------------------------------------------------ */
     abstract protected boolean remove(NoSqlSession session);
+    
+    /* ------------------------------------------------------------ */
+    abstract protected void swapSessionId(NoSqlSession session, String oldId);
+    
     
 }

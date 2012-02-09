@@ -106,7 +106,27 @@ public class MongoSessionManager extends NoSqlSessionManager
         super.setSessionIdManager(metaManager);
         
     }
-
+    
+    /* ------------------------------------------------------------ */
+    protected synchronized void swapSessionId (NoSqlSession session, String oldId)
+    {
+        try
+        {
+            DBObject o = _sessions.findOne(new BasicDBObject(__ID, oldId));
+            //update the dbobject with the new id
+            o.put(__ID, session.getClusterId());
+            
+            //write it back
+            _sessions.save(o);
+        }
+        catch (Exception e)
+        {
+            LOG.warn(e);
+        }
+    }
+    
+    
+    
     /* ------------------------------------------------------------ */
     @Override
     protected synchronized Object save(NoSqlSession session, Object version, boolean activateAfterSave)

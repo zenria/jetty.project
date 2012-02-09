@@ -29,6 +29,7 @@ import org.eclipse.jetty.client.ContentExchange;
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.http.HttpMethods;
 import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.servlet.ServletHolder;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -49,9 +50,17 @@ public abstract class AbstractServerCrossContextSessionTest
         String servletMapping = "/server";
         AbstractTestServer server = createServer(0);
         ServletContextHandler ctxA = server.addContext(contextA);
-        ctxA.addServlet(TestServletA.class, servletMapping);
+        
+        ServletHolder servletHolderA = new ServletHolder();
+        TestServletA servletA = new TestServletA();
+        servletHolderA.setServlet(servletA);   
+        ctxA.addServlet(servletHolderA, servletMapping);
+        
         ServletContextHandler ctxB = server.addContext(contextB);
-        ctxB.addServlet(TestServletB.class, servletMapping);
+        ServletHolder servletHolderB = new ServletHolder();
+        TestServletB servletB = new TestServletB();
+        servletHolderB.setServlet(servletB);
+        ctxB.addServlet(servletHolderB, servletMapping);
         server.start();
         int port=server.getPort();
         try
@@ -68,6 +77,7 @@ public abstract class AbstractServerCrossContextSessionTest
                 client.send(exchange);
                 exchange.waitForDone();
                 assertEquals(HttpServletResponse.SC_OK,exchange.getResponseStatus());
+                assertEquals (servletA.sessionId, servletB.sessionId);
             }
             finally
             {
@@ -82,11 +92,17 @@ public abstract class AbstractServerCrossContextSessionTest
 
     public static class TestServletA extends HttpServlet
     {
+        public String sessionId;
+        
         @Override
         protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException
         {
             HttpSession session = request.getSession(false);
-            if (session == null) session = request.getSession(true);
+            if (session == null)
+            {
+                session = request.getSession(true);
+                sessionId = session.getId();
+            }
 
             // Add something to the session
             session.setAttribute("A", "A");
@@ -107,11 +123,17 @@ public abstract class AbstractServerCrossContextSessionTest
 
     public static class TestServletB extends HttpServlet
     {
+        public String sessionId;
+        
         @Override
         protected void doGet(HttpServletRequest request, HttpServletResponse httpServletResponse) throws ServletException, IOException
         {
             HttpSession session = request.getSession(false);
-            if (session == null) session = request.getSession(true);
+            if (session == null)
+            {
+                session = request.getSession(true);
+                sessionId = session.getId();
+            }
 
             // Be sure nothing from contextA is present
             Object objectA = session.getAttribute("A");

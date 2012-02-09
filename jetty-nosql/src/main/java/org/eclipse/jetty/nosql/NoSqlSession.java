@@ -35,6 +35,7 @@ public class NoSqlSession extends AbstractSession
     private Object _version;
     private long _lastSync;
 
+    
     /* ------------------------------------------------------------ */
     public NoSqlSession(NoSqlSessionManager manager, long created, long accessed, String clusterId)
     {
@@ -178,8 +179,9 @@ public class NoSqlSession extends AbstractSession
     @Override
     public void replaceSessionId(HttpServletRequest request, String newId)
     {
-        super.replaceSessionId(request, newId);
-        //TODO where to set the new id???
+        String oldId = getClusterId();
+        super.replaceSessionId(request, newId); //replaced in memory
+        _manager.swapSessionId(this, oldId);
     }  
     
 }
