@@ -90,7 +90,7 @@ public class WebSocketConnectionRFC6455 extends AbstractConnection implements We
     final static byte OP_PONG = 0x0A;
     final static byte OP_EXT_CTRL = 0x0B;
 
-    final static int CLOSE_NORMAL=1000;
+    public final static int CLOSE_NORMAL=1000;
     final static int CLOSE_SHUTDOWN=1001;
     final static int CLOSE_PROTOCOL=1002;
     final static int CLOSE_BAD_DATA=1003;

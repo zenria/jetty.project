@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -48,6 +49,7 @@ import org.eclipse.jetty.util.QuotedStringTokenizer;
 import org.eclipse.jetty.util.component.AbstractLifeCycle;
 import org.eclipse.jetty.util.log.Log;
 import org.eclipse.jetty.util.log.Logger;
+import org.eclipse.jetty.websocket.mux.MuxExtension;
 
 /**
  * Factory to create WebSocket connections
@@ -84,6 +86,7 @@ public class WebSocketFactory extends AbstractLifeCycle
         _extensionClasses.put("identity",IdentityExtension.class);
         _extensionClasses.put("fragment",FragmentExtension.class);
         _extensionClasses.put("x-deflate-frame",DeflateFrameExtension.class);
+        _extensionClasses.put("x-google-mux",MuxExtension.class);
     }
 
     private final Acceptor _acceptor;
@@ -317,7 +320,21 @@ public class WebSocketFactory extends AbstractLifeCycle
         {
             String origin = request.getHeader("Origin");
             if (origin==null)
+            {
+                // TODO: make version specific.
+                
+                // 00 - http://tools.ietf.org/html/draft-ietf-hybi-thewebsocketprotocol-00
+                //   Introduced as a http response header 
+                // 06 - http://tools.ietf.org/html/draft-ietf-hybi-thewebsocketprotocol-06
+                //   Removed as response header.
+                //   Introduced as request header to prevent unauthorized cross-origin use of websocket.
+                // 11 - http://tools.ietf.org/html/draft-ietf-hybi-thewebsocketprotocol-11
+                //   Removed. no longer present in spec.
+                // RFC6455 - http://tools.ietf.org/html/rfc6455
+                //   Not present in final standard.
                 origin = request.getHeader("Sec-WebSocket-Origin");
+            }
+            
             if (!_acceptor.checkOrigin(request,origin))
             {
                 response.sendError(HttpServletResponse.SC_FORBIDDEN);
