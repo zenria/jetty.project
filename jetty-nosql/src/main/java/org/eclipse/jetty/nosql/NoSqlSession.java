@@ -37,9 +37,9 @@ public class NoSqlSession extends AbstractSession
 
     
     /* ------------------------------------------------------------ */
-    public NoSqlSession(NoSqlSessionManager manager, long created, long accessed, String clusterId)
+    public NoSqlSession(NoSqlSessionManager manager, HttpServletRequest request)
     {
-        super(manager, created,accessed,clusterId);
+        super(manager, request);
         _manager=manager;
         save(true);
         _active.incrementAndGet();

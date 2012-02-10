@@ -140,7 +140,6 @@ public class MongoSessionManager extends NoSqlSessionManager
 
             // Form query for upsert
             BasicDBObject key = new BasicDBObject(__ID,session.getClusterId());
-            key.put(__VALID,true);
 
             // Form updates
             BasicDBObject update = new BasicDBObject();
@@ -155,6 +154,7 @@ public class MongoSessionManager extends NoSqlSessionManager
                 upsert = true;
                 version = new Long(1);
                 sets.put(__CREATED,session.getCreationTime());
+                sets.put(__VALID,true);
                 sets.put(getContextKey(__VERSION),version);
             }
             else
