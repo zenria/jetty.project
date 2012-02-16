@@ -223,6 +223,47 @@ public class WebSocketClient
     {
         return _extensions;
     }
+    
+    /* ------------------------------------------------------------ */
+    /**
+     * Add an extension to the list of extensions.
+     * <p>
+     * The name is added to the end if it doesn't exist already in the
+     * list of extensions.
+     * <p>
+     * If the name already exists, no change to the list of extensions is performed.
+     * 
+     * @param name the name of the extension to add
+     */
+    public void addExtension(String name)
+    {
+        if (!_extensions.contains(name))
+        {
+            _extensions.add(name);
+        }
+    }
+
+    /* ------------------------------------------------------------ */
+    /**
+     * Set the list of websocket extensions, in order desired.
+     * 
+     * @param names the names of the extensions to set
+     */
+    public void setExtensions(String... names)
+    {
+        synchronized (_extensions)
+        {
+            _extensions.clear();
+            for (String name : names)
+            {
+                if (_extensions.contains(name))
+                {
+                    throw new IllegalArgumentException("Duplicate extension: " + name);
+                }
+                _extensions.add(name);
+            }
+        }
+    }
 
     /* ------------------------------------------------------------ */
     /**

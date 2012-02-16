@@ -15,6 +15,8 @@
  *******************************************************************************/
 package org.eclipse.jetty.websocket;
 
+import static org.hamcrest.Matchers.*;
+
 import java.net.URI;
 import java.util.concurrent.TimeUnit;
 
@@ -30,9 +32,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.notNullValue;
 
 public class SafariWebsocketDraft0Test
 {
@@ -98,8 +97,10 @@ public class SafariWebsocketDraft0Test
             Assert.assertThat("CaptureSocket.isConnected", socket.awaitConnected(10000), is(true));
 
             // Give servlet time to process messages
-            for (int i=0;i<100 && socket.messages.size()<5;i++)
-                threadSleep(100,TimeUnit.MILLISECONDS);
+            for (int i = 0; i < 100 && socket.messages.size() < 5; i++)
+            {
+                TimeUnit.MILLISECONDS.sleep(100);
+            }
 
             // Should have captured 5 messages.
             Assert.assertThat("CaptureSocket.messages.size",socket.messages.size(),is(5));
@@ -109,12 +110,6 @@ public class SafariWebsocketDraft0Test
             // System.out.println("Closing client socket");
             safari.disconnect();
         }
-    }
-
-    public static void threadSleep(int dur, TimeUnit unit) throws InterruptedException
-    {
-        long ms = TimeUnit.MILLISECONDS.convert(dur,unit);
-        Thread.sleep(ms);
     }
 
     @After

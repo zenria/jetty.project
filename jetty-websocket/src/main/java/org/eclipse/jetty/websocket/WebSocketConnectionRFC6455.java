@@ -107,7 +107,7 @@ public class WebSocketConnectionRFC6455 extends AbstractConnection implements We
     final static int FLAG_FIN=0x8;
 
     // Per RFC 6455, section 1.3 - Opening Handshake - this version is "13"
-    final static int VERSION=13;
+    public final static int VERSION=13;
 
     static boolean isLastFrame(byte flags)
     {
