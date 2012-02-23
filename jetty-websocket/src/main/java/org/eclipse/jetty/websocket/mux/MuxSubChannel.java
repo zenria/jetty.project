@@ -36,7 +36,7 @@ public class MuxSubChannel implements MuxChannel
         }
     }
 
-    public void onMuxOpen(int channelId, MuxConnection connection)
+    public void onMuxOpen(int channelId, MuxLogicalConnection connection)
     {
         // Notify MUX of open connection
         if (_onControl != null)
@@ -45,7 +45,7 @@ public class MuxSubChannel implements MuxChannel
         }
     }
 
-    public void onMuxClose(int channelId, MuxConnection connection)
+    public void onMuxClose(int channelId, MuxLogicalConnection connection)
     {
         // Notify MUX of close connection
         if (_onControl != null)

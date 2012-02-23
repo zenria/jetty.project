@@ -1,6 +1,10 @@
 package org.eclipse.jetty.websocket.mux;
 
+import java.net.URI;
+import java.util.Map;
+
 import org.eclipse.jetty.websocket.WebSocket;
+import org.eclipse.jetty.websocket.WebSocket.Connection;
 import org.eclipse.jetty.websocket.extensions.AbstractExtension;
 import org.eclipse.jetty.websocket.extensions.ClientExtension;
 
@@ -12,7 +16,9 @@ public class MuxClientExtension extends AbstractExtension implements ClientExten
     public MuxClientExtension(MuxExtension muxBase)
     {
         super(muxBase.getName());
-        init(muxBase.getInitParameters());
+        Map<String, String> params = muxBase.getInitParameters();
+        params.put("jetty-mode","client");
+        init(params);
     }
 
     @Override
@@ -23,5 +29,11 @@ public class MuxClientExtension extends AbstractExtension implements ClientExten
             return websocket;
         }
         return new MuxedWebSocket(websocket);
+    }
+
+    public Connection establishConnection(URI uri, WebSocket websocket)
+    {
+        // TODO Auto-generated method stub
+        return null;
     }
 }

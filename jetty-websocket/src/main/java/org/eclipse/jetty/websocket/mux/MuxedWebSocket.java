@@ -3,6 +3,8 @@ package org.eclipse.jetty.websocket.mux;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.eclipse.jetty.util.log.Log;
+import org.eclipse.jetty.util.log.Logger;
 import org.eclipse.jetty.websocket.WebSocket;
 
 /**
@@ -12,6 +14,8 @@ import org.eclipse.jetty.websocket.WebSocket;
  */
 public class MuxedWebSocket implements MuxChannel, WebSocket, WebSocket.OnFrame, WebSocket.OnBinaryMessage, WebSocket.OnTextMessage, WebSocket.OnControl
 {
+    private static final Logger LOG = Log.getLogger(MuxedWebSocket.class);
+    
     /**
      * The list of channels.
      */
@@ -39,6 +43,7 @@ public class MuxedWebSocket implements MuxChannel, WebSocket, WebSocket.OnFrame,
                 _channels.add(null);
             }
             _channels.set(channelNum,channel);
+            LOG.info("Adding Channel " + channelNum + ": " + channel);
         }
     }
 
@@ -53,9 +58,9 @@ public class MuxedWebSocket implements MuxChannel, WebSocket, WebSocket.OnFrame,
             for (int id = len-1; id >= 0; id--)
             {
                 MuxChannel channel = _channels.get(id);
-                MuxConnection conn = new MuxConnection(id,_physicalConnection);
-                conn.close();
-                channel.onMuxClose(id,conn);
+//                MuxLogicalConnection conn = new MuxLogicalConnection(id,_physicalConnection);
+//                conn.close();
+//                channel.onMuxClose(id,conn);
                 _channels.remove(id);
             }
         }
@@ -107,7 +112,7 @@ public class MuxedWebSocket implements MuxChannel, WebSocket, WebSocket.OnFrame,
             for (int id = 1; id < len; id++)
             {
                 MuxChannel channel = _channels.get(id);
-                channel.onMuxOpen(id,new MuxConnection(id,this._physicalConnection));
+//                channel.onMuxOpen(id,new MuxLogicalConnection(id,this._physicalConnection));
             }
         }
     }
@@ -123,7 +128,7 @@ public class MuxedWebSocket implements MuxChannel, WebSocket, WebSocket.OnFrame,
     /**
      * Control Channel Open
      */
-    public void onMuxOpen(int channelId, MuxConnection connection)
+    public void onMuxOpen(int channelId, MuxLogicalConnection connection)
     {
         // Ignore, not possible in MUX
     }
@@ -131,7 +136,7 @@ public class MuxedWebSocket implements MuxChannel, WebSocket, WebSocket.OnFrame,
     /**
      * Control Channel Close
      */
-    public void onMuxClose(int channelId, MuxConnection connection)
+    public void onMuxClose(int channelId, MuxLogicalConnection connection)
     {
         // Ignore, not possible in MUX
     }

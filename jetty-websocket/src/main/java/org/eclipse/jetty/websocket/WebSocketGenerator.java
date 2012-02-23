@@ -30,14 +30,44 @@ package org.eclipse.jetty.websocket;
 
 import java.io.IOException;
 
-
-
-/* ------------------------------------------------------------ */
-/** WebSocketGenerator.
+/**
+ * WebSocketGenerator - responsible for creating appropriate outgoing WebSocket frames.
  */
 public interface WebSocketGenerator
 {
+    /**
+     * Flush the buffer (if any pending)
+     * 
+     * @return number of bytes flushed to outbound connection.
+     * @throws IOException
+     *             if underlying IO framework error during flush
+     */
     int flush() throws IOException;
+
+    /**
+     * Test if buffer is empty.
+     * 
+     * @return true if buffer is non-null and contains data.
+     */
     boolean isBufferEmpty();
-    void addFrame(byte flags,byte opcode, byte[] content, int offset, int length) throws IOException;
+
+    /**
+     * Create outbound WebSocket frame.
+     * 
+     * @param flags
+     *            the frame flags. currently only {@link WebSocketConnectionRFC6455#FLAG_FIN FIN} flag is supported (on
+     *            or off).
+     * @param opcode
+     *            the frame opcode to use.
+     * @param content
+     *            the content byte buffer to send
+     * @param offset
+     *            the offset within the content to start sending from
+     * @param length
+     *            the number of bytes from content to send
+     * @throws IOException
+     *             if underlying IO framework error
+     * @see <a href="http://tools.ietf.org/html/rfc6455#section-5.2">RFC 6455 - Sec 5.2 - Base Framing Protocol</a>
+     */
+    void addFrame(byte flags, byte opcode, byte[] content, int offset, int length) throws IOException;
 }

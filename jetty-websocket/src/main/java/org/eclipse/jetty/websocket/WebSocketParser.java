@@ -40,13 +40,39 @@ import org.eclipse.jetty.io.Buffer;
 public interface WebSocketParser
 {
     
-    /* ------------------------------------------------------------ */
-    /* ------------------------------------------------------------ */
-    /* ------------------------------------------------------------ */
+    /**
+     * Incoming Frame Handler
+     */
     public interface FrameHandler
     {
+        /**
+         * Received processed WebSocket frame.
+         * <p>
+         * See <a href="http://tools.ietf.org/html/rfc6455#section-5.2">RFC 6455 - Sec 5.2 - Base Framing Protocol</a>
+         * for details.
+         * 
+         * @param flags
+         *            the raw frame flags. only the FIN bit is of value, the other 3 bits are marked as reserved and
+         *            unused.
+         * @param opcode
+         *            the websocket opcode.
+         * @param buffer
+         *            the payload data
+         */
         void onFrame(byte flags, byte opcode, Buffer buffer);
-        void close(int code,String message);
+
+        /**
+         * Received close opcode (0x08).
+         * <p>
+         * See <a href="http://tools.ietf.org/html/rfc6455#section-7.4">RFC 6455 - Sec 7.4 - Status Codes</a> for
+         * details.
+         * 
+         * @param code
+         *            the close code
+         * @param message
+         *            the optional message for the close message
+         */
+        void close(int code, String message);
     }
 
     Buffer getBuffer();

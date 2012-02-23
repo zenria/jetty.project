@@ -274,6 +274,8 @@ public class WebSocketFactory extends AbstractLifeCycle
 
             extensions.addAll(_extensionManager.initExtensions(extensionsRequested, Extension.Mode.SERVER));
         }
+        
+        LOG.debug("Extensions: " + extensions);
 
         // [Server Extensions] Initialize
         for (Extension extension : extensions)

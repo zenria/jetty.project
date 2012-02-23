@@ -1,4 +1,4 @@
-package org.eclipse.jetty.websocket.mux;
+package org.eclipse.jetty.websocket;
 
 import static org.hamcrest.Matchers.*;
 
@@ -12,10 +12,7 @@ import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.util.log.Log;
 import org.eclipse.jetty.util.log.Logger;
 import org.eclipse.jetty.util.log.StdErrLog;
-import org.eclipse.jetty.websocket.WebSocket;
 import org.eclipse.jetty.websocket.WebSocket.Connection;
-import org.eclipse.jetty.websocket.WebSocketClient;
-import org.eclipse.jetty.websocket.WebSocketClientFactory;
 import org.eclipse.jetty.websocket.helper.NoopWebSocket;
 import org.eclipse.jetty.websocket.helper.WebSocketCaptureServlet;
 import org.junit.After;
@@ -23,7 +20,10 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class MuxExtensionTest
+/**
+ * Test the extension chaining found to ensure that sequential extensions are called in the appropriate order.
+ */
+public class ExtensionChainingTest
 {
     private Server server;
     private WebSocketCaptureServlet servlet;
@@ -34,15 +34,11 @@ public class MuxExtensionTest
     public void startServer() throws Exception
     {
         // Enable DEBUG logging for websocket classes.
-        enableDebugLogging(MuxExtension.class);
-        enableDebugLogging(MuxClientExtension.class);
-        enableDebugLogging(MuxServerExtension.class);
-        enableDebugLogging(MuxChannel.class);
-        enableDebugLogging(MuxLogicalConnection.class);
-        enableDebugLogging(MuxedWebSocket.class);
-        enableDebugLogging(MuxSubChannel.class);
-        enableDebugLogging(WebSocketClient.class);
+        // enableDebugLogging(WebSocketClient.class);
         enableDebugLogging(WebSocketClientFactory.class);
+        enableDebugLogging(WebSocketFactory.class);
+        // enableDebugLogging(WebSocketConnectionRFC6455.class);
+        // enableDebugLogging(DebugExtension.class);
 
         // Configure Server
         server = new Server(0);
@@ -68,6 +64,10 @@ public class MuxExtensionTest
         serverUri = new URI(String.format("ws://%s:%d/",host,port));
         // System.out.printf("Server URI: %s%n",serverUri);
 
+        // Enable Debug Extension
+        servlet.getWebSocketFactory().getExtensionManager().registerExtension("debug",DebugExtension.class);
+
+        // Setup Client Factories
         clientFactory = new WebSocketClientFactory();
         clientFactory.start();
     }
@@ -90,11 +90,12 @@ public class MuxExtensionTest
     }
 
     @Test
-    public void testSingleConnection() throws Exception
+    public void testExtensionChain() throws Exception
     {
-        WebSocketClient client = clientFactory.newWebSocketClient();
+        DebugExtension.setCapture("");
 
-        client.setExtensions("mux");
+        WebSocketClient client = clientFactory.newWebSocketClient();
+        client.setExtensions("debug; id=1, debug; id=2, debug; id=3, debug; id=4");
         WebSocket.Connection conn = null;
 
         try
@@ -103,41 +104,20 @@ public class MuxExtensionTest
             conn.sendMessage("hello world");
 
             Assert.assertThat("servlet",servlet.captures.size(),is(1));
+
         }
         finally
         {
             close(conn);
         }
-    }
 
-    @Test
-    public void testTwoConnections() throws Exception
-    {
-        WebSocketClient client = clientFactory.newWebSocketClient();
+        clientFactory.stop();
 
-        client.setExtensions("mux");
-        WebSocket.Connection conn1 = null;
-        WebSocket.Connection conn2 = null;
-
-        try
-        {
-            // Mimicing the Example found in the MUX spec 02 (section 8)
-            // http://tools.ietf.org/html/draft-tamplin-hybi-google-mux-02#section-8
-            conn1 = client.open(serverUri,new NoopWebSocket(),2,TimeUnit.SECONDS);
-            conn2 = client.open(serverUri,new NoopWebSocket(),2,TimeUnit.SECONDS);
-            conn1.sendMessage("Hello");
-            conn2.sendMessage("bye");
-            conn1.sendMessage(" world");
-
-            Assert.assertThat("Active server connection count",servlet.getConnectionCount(),is(1));
-
-            Assert.assertThat("servlet",servlet.captures.size(),is(2));
-        }
-        finally
-        {
-            close(conn1);
-            close(conn2);
-        }
+        // syntax is (in|out) "[" (text|close|binary) (id param) "]"
+        // such that "in[t3]" means inbound text message on debug #3.
+        String expectedCapture = "in[t1]in[t2]in[t3]in[t4]in[c1]in[c2]in[c3]in[c4]out[c4]out[c3]out[c2]out[c1]";
+        String actualCapture = DebugExtension.getCapture();
+        Assert.assertThat("Order Capture",actualCapture,is(expectedCapture));
     }
 
     private void close(Connection conn)

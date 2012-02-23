@@ -46,6 +46,8 @@ import org.eclipse.jetty.io.nio.SslConnection;
 import org.eclipse.jetty.util.B64Code;
 import org.eclipse.jetty.util.QuotedStringTokenizer;
 import org.eclipse.jetty.util.component.AggregateLifeCycle;
+import org.eclipse.jetty.util.log.Log;
+import org.eclipse.jetty.util.log.Logger;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 import org.eclipse.jetty.util.thread.ThreadPool;
@@ -64,7 +66,10 @@ import org.eclipse.jetty.websocket.extensions.ExtensionManager;
  */
 public class WebSocketClientFactory extends AggregateLifeCycle
 {
+    private static final Logger LOG = Log.getLogger(WebSocketClientFactory.class);
     private final static ByteArrayBuffer __ACCEPT = new ByteArrayBuffer.CaseInsensitive("Sec-WebSocket-Accept");
+    // Response header for server acknowledged extensions that are in use.
+    private final static ByteArrayBuffer __EXTENSIONS = new ByteArrayBuffer.CaseInsensitive("Sec-WebSocket-Extensions");
     private final Queue<WebSocketConnection> connections = new ConcurrentLinkedQueue<WebSocketConnection>();
     private final SslContextFactory _sslContextFactory = new SslContextFactory();
     private final ThreadPool _threadPool;
@@ -365,6 +370,7 @@ public class WebSocketClientFactory extends AggregateLifeCycle
         private final HttpParser _parser;
         private String _accept;
         private String _error;
+        private String _acknowledgedExtensions;
         private ByteArrayBuffer _handshake;
 
         public HandshakeConnection(AsyncEndPoint endpoint, WebSocketClient.WebSocketFuture future)
@@ -394,7 +400,13 @@ public class WebSocketClientFactory extends AggregateLifeCycle
                 public void parsedHeader(Buffer name, Buffer value) throws IOException
                 {
                     if (__ACCEPT.equals(name))
+                    {
                         _accept = value.toString();
+                    }
+                    if (__EXTENSIONS.equals(name))
+                    {
+                        _acknowledgedExtensions = value.toString();
+                    }
                 }
 
                 @Override
@@ -546,10 +558,12 @@ public class WebSocketClientFactory extends AggregateLifeCycle
         {
             List<Extension> extensions = null;
             
-            if ((_future.getExtensions() != null) && (!_future.getExtensions().isEmpty()))
+            if (_acknowledgedExtensions != null)
             {
-                extensions = _extensionManager.initExtensions(_future.getExtensions(), Extension.Mode.CLIENT);
+                extensions = _extensionManager.initExtensions(_acknowledgedExtensions,Extension.Mode.CLIENT);
             }
+            
+            LOG.debug("Extensions: " + extensions);
             
             return new WebSocketClientConnection(
                     _future._client.getFactory(),

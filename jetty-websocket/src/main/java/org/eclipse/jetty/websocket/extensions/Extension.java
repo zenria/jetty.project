@@ -49,7 +49,7 @@ public interface Extension extends WebSocketParser.FrameHandler, WebSocketGenera
      * @return the Sec-WebSocketExtensions <code>extension</code> with optional <code>extension-param</code>
      */
     public String getParameterizedName();
-
+    
     /**
      * Initialize / Configure the newly created extension.
      * 

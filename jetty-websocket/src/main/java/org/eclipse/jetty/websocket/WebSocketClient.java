@@ -34,41 +34,46 @@ import java.util.concurrent.TimeoutException;
 
 import org.eclipse.jetty.util.log.Logger;
 
-
 /* ------------------------------------------------------------ */
 /**
- * <p>{@link WebSocketClient} allows to create multiple connections to multiple destinations
- * that can speak the websocket protocol.</p>
- * <p>When creating websocket connections, {@link WebSocketClient} accepts a {@link WebSocket}
- * object (to receive events from the server), and returns a {@link WebSocket.Connection} to
- * send data to the server.</p>
- * <p>Example usage is as follows:</p>
+ * <p>
+ * {@link WebSocketClient} allows to create multiple connections to multiple destinations that can speak the websocket
+ * protocol.
+ * </p>
+ * <p>
+ * When creating websocket connections, {@link WebSocketClient} accepts a {@link WebSocket} object (to receive events
+ * from the server), and returns a {@link WebSocket.Connection} to send data to the server.
+ * </p>
+ * <p>
+ * Example usage is as follows:
+ * </p>
+ * 
  * <pre>
- *   WebSocketClientFactory factory = new WebSocketClientFactory();
- *   factory.start();
- *
- *   WebSocketClient client = factory.newWebSocketClient();
- *   // Configure the client
- *
- *   WebSocket.Connection connection = client.open(new URI("ws://127.0.0.1:8080/"), new WebSocket.OnTextMessage()
- *   {
+ * WebSocketClientFactory factory = new WebSocketClientFactory();
+ * factory.start();
+ * 
+ * WebSocketClient client = factory.newWebSocketClient();
+ * // Configure the client
+ * 
+ * WebSocket.Connection connection = client.open(new URI(&quot;ws://127.0.0.1:8080/&quot;),new WebSocket.OnTextMessage()
+ * {
  *     public void onOpen(Connection connection)
  *     {
- *       // open notification
+ *         // open notification
  *     }
- *
+ * 
  *     public void onClose(int closeCode, String message)
  *     {
- *       // close notification
+ *         // close notification
  *     }
- *
+ * 
  *     public void onMessage(String data)
  *     {
- *       // handle incoming message
+ *         // handle incoming message
  *     }
- *   }).get(5, TimeUnit.SECONDS);
- *
- *   connection.sendMessage("Hello World");
+ * }).get(5,TimeUnit.SECONDS);
+ * 
+ * connection.sendMessage(&quot;Hello World&quot;);
  * </pre>
  */
 public class WebSocketClient
@@ -76,42 +81,50 @@ public class WebSocketClient
     private final static Logger LOG = org.eclipse.jetty.util.log.Log.getLogger(WebSocketClient.class.getName());
 
     private final WebSocketClientFactory _factory;
-    private final Map<String,String> _cookies=new ConcurrentHashMap<String, String>();
-    private final List<String> _extensions=new CopyOnWriteArrayList<String>();
+    private final Map<String, String> _cookies = new ConcurrentHashMap<String, String>();
+    private final List<String> _extensions = new CopyOnWriteArrayList<String>();
     private String _origin;
     private String _protocol;
-    private int _maxIdleTime=-1;
-    private int _maxTextMessageSize=16*1024;
-    private int _maxBinaryMessageSize=-1;
+    private int _maxIdleTime = -1;
+    private int _maxTextMessageSize = 16 * 1024;
+    private int _maxBinaryMessageSize = -1;
     private MaskGen _maskGen;
     private SocketAddress _bindAddress;
 
     /* ------------------------------------------------------------ */
     /**
-     * <p>Creates a WebSocketClient from a private WebSocketClientFactory.</p>
-     * <p>This can be wasteful of resources if many clients are created.</p>
-     *
+     * <p>
+     * Creates a WebSocketClient from a private WebSocketClientFactory.
+     * </p>
+     * <p>
+     * This can be wasteful of resources if many clients are created.
+     * </p>
+     * 
      * @deprecated Use {@link WebSocketClientFactory#newWebSocketClient()}
-     * @throws Exception if the private WebSocketClientFactory fails to start
+     * @throws Exception
+     *             if the private WebSocketClientFactory fails to start
      */
     @Deprecated
     public WebSocketClient() throws Exception
     {
-        _factory=new WebSocketClientFactory();
+        _factory = new WebSocketClientFactory();
         _factory.start();
-        _maskGen=_factory.getMaskGen();
+        _maskGen = _factory.getMaskGen();
     }
 
     /* ------------------------------------------------------------ */
     /**
-     * <p>Creates a WebSocketClient with shared WebSocketClientFactory.</p>
-     *
-     * @param factory the shared {@link WebSocketClientFactory}
+     * <p>
+     * Creates a WebSocketClient with shared WebSocketClientFactory.
+     * </p>
+     * 
+     * @param factory
+     *            the shared {@link WebSocketClientFactory}
      */
     public WebSocketClient(WebSocketClientFactory factory)
     {
-        _factory=factory;
-        _maskGen=_factory.getMaskGen();
+        _factory = factory;
+        _maskGen = _factory.getMaskGen();
     }
 
     /* ------------------------------------------------------------ */
@@ -135,7 +148,8 @@ public class WebSocketClient
 
     /* ------------------------------------------------------------ */
     /**
-     * @param bindAddress the address to bind the socket channel to
+     * @param bindAddress
+     *            the address to bind the socket channel to
      * @see #getBindAddress()
      */
     public void setBindAddress(SocketAddress bindAddress)
@@ -145,8 +159,8 @@ public class WebSocketClient
 
     /* ------------------------------------------------------------ */
     /**
-     * @return The maxIdleTime in ms for connections opened by this client,
-     * or -1 if the default from {@link WebSocketClientFactory#getSelectorManager()} is used.
+     * @return The maxIdleTime in ms for connections opened by this client, or -1 if the default from
+     *         {@link WebSocketClientFactory#getSelectorManager()} is used.
      * @see #setMaxIdleTime(int)
      */
     public int getMaxIdleTime()
@@ -156,12 +170,13 @@ public class WebSocketClient
 
     /* ------------------------------------------------------------ */
     /**
-     * @param maxIdleTime The max idle time in ms for connections opened by this client
+     * @param maxIdleTime
+     *            The max idle time in ms for connections opened by this client
      * @see #getMaxIdleTime()
      */
     public void setMaxIdleTime(int maxIdleTime)
     {
-        _maxIdleTime=maxIdleTime;
+        _maxIdleTime = maxIdleTime;
     }
 
     /* ------------------------------------------------------------ */
@@ -176,7 +191,8 @@ public class WebSocketClient
 
     /* ------------------------------------------------------------ */
     /**
-     * @param protocol The subprotocol string for connections opened by this client.
+     * @param protocol
+     *            The subprotocol string for connections opened by this client.
      * @see #getProtocol()
      */
     public void setProtocol(String protocol)
@@ -196,7 +212,8 @@ public class WebSocketClient
 
     /* ------------------------------------------------------------ */
     /**
-     * @param origin The origin URI of the client (eg "http://example.com")
+     * @param origin
+     *            The origin URI of the client (eg "http://example.com")
      * @see #getOrigin()
      */
     public void setOrigin(String origin)
@@ -206,11 +223,14 @@ public class WebSocketClient
 
     /* ------------------------------------------------------------ */
     /**
-     * <p>Returns the map of the cookies that are sent during the initial HTTP handshake
-     * that upgrades to the websocket protocol.</p>
+     * <p>
+     * Returns the map of the cookies that are sent during the initial HTTP handshake that upgrades to the websocket
+     * protocol.
+     * </p>
+     * 
      * @return The read-write cookie map
      */
-    public Map<String,String> getCookies()
+    public Map<String, String> getCookies()
     {
         return _cookies;
     }
@@ -223,17 +243,17 @@ public class WebSocketClient
     {
         return _extensions;
     }
-    
+
     /* ------------------------------------------------------------ */
     /**
      * Add an extension to the list of extensions.
      * <p>
-     * The name is added to the end if it doesn't exist already in the
-     * list of extensions.
+     * The name is added to the end if it doesn't exist already in the list of extensions.
      * <p>
      * If the name already exists, no change to the list of extensions is performed.
      * 
-     * @param name the name of the extension to add
+     * @param name
+     *            the name of the extension to add
      */
     public void addExtension(String name)
     {
@@ -242,18 +262,19 @@ public class WebSocketClient
             _extensions.add(name);
         }
     }
-    
+
     /* ------------------------------------------------------------ */
     /**
      * Add an extension to the list of extensions, with parameters.
      * <p>
-     * The name is added to the end if it doesn't exist already in the
-     * list of extensions.
+     * The name is added to the end if it doesn't exist already in the list of extensions.
      * <p>
      * If the name already exists, no change to the list of extensions is performed.
      * 
-     * @param name the name of the extension to add
-     * @param parameters the parameters for the extension
+     * @param name
+     *            the name of the extension to add
+     * @param parameters
+     *            the parameters for the extension
      */
     public void addExtension(String name, Map<String, String> parameters)
     {
@@ -267,7 +288,8 @@ public class WebSocketClient
     /**
      * Set the list of websocket extensions, in order desired.
      * 
-     * @param names the names of the extensions to set
+     * @param names
+     *            the names of the extensions to set
      */
     public void setExtensions(String... names)
     {
@@ -297,7 +319,8 @@ public class WebSocketClient
 
     /* ------------------------------------------------------------ */
     /**
-     * @param maskGen the mask generator to use, or null if not mask generator should be used
+     * @param maskGen
+     *            the mask generator to use, or null if not mask generator should be used
      * @see #getMaskGen()
      */
     public void setMaskGen(MaskGen maskGen)
@@ -316,9 +339,11 @@ public class WebSocketClient
 
     /* ------------------------------------------------------------ */
     /**
-     * Set the initial maximum text message size for a connection. This can be changed by
-     * the application calling {@link WebSocket.Connection#setMaxTextMessageSize(int)}.
-     * @param maxTextMessageSize The default maximum text message size (in characters) for a connection
+     * Set the initial maximum text message size for a connection. This can be changed by the application calling
+     * {@link WebSocket.Connection#setMaxTextMessageSize(int)}.
+     * 
+     * @param maxTextMessageSize
+     *            The default maximum text message size (in characters) for a connection
      */
     public void setMaxTextMessageSize(int maxTextMessageSize)
     {
@@ -327,7 +352,7 @@ public class WebSocketClient
 
     /* ------------------------------------------------------------ */
     /**
-     * @return The initial maximum binary message size (in bytes)  for a connection
+     * @return The initial maximum binary message size (in bytes) for a connection
      */
     public int getMaxBinaryMessageSize()
     {
@@ -336,9 +361,11 @@ public class WebSocketClient
 
     /* ------------------------------------------------------------ */
     /**
-     * Set the initial maximum binary message size for a connection. This can be changed by
-     * the application calling {@link WebSocket.Connection#setMaxBinaryMessageSize(int)}.
-     * @param maxBinaryMessageSize The default maximum binary message size (in bytes) for a connection
+     * Set the initial maximum binary message size for a connection. This can be changed by the application calling
+     * {@link WebSocket.Connection#setMaxBinaryMessageSize(int)}.
+     * 
+     * @param maxBinaryMessageSize
+     *            The default maximum binary message size (in bytes) for a connection
      */
     public void setMaxBinaryMessageSize(int maxBinaryMessageSize)
     {
@@ -347,19 +374,29 @@ public class WebSocketClient
 
     /* ------------------------------------------------------------ */
     /**
-     * <p>Opens a websocket connection to the URI and blocks until the connection is accepted or there is an error.</p>
-     *
-     * @param uri The URI to connect to.
-     * @param websocket The {@link WebSocket} instance to handle incoming events.
-     * @param maxConnectTime The interval to wait for a successful connection
-     * @param units the units of the maxConnectTime
+     * <p>
+     * Opens a websocket connection to the URI and blocks until the connection is accepted or there is an error.
+     * </p>
+     * 
+     * @param uri
+     *            The URI to connect to.
+     * @param websocket
+     *            The {@link WebSocket} instance to handle incoming events.
+     * @param maxConnectTime
+     *            The interval to wait for a successful connection
+     * @param units
+     *            the units of the maxConnectTime
      * @return A {@link WebSocket.Connection}
-     * @throws IOException if the connection fails
-     * @throws InterruptedException if the thread is interrupted
-     * @throws TimeoutException if the timeout elapses before the connection is completed
+     * @throws IOException
+     *             if the connection fails
+     * @throws InterruptedException
+     *             if the thread is interrupted
+     * @throws TimeoutException
+     *             if the timeout elapses before the connection is completed
      * @see #open(URI, WebSocket)
      */
-    public WebSocket.Connection open(URI uri, WebSocket websocket,long maxConnectTime,TimeUnit units) throws IOException, InterruptedException, TimeoutException
+    public WebSocket.Connection open(URI uri, WebSocket websocket, long maxConnectTime, TimeUnit units) throws IOException, InterruptedException,
+            TimeoutException
     {
         try
         {
@@ -380,13 +417,20 @@ public class WebSocketClient
 
     /* ------------------------------------------------------------ */
     /**
-     * <p>Asynchronously opens a websocket connection and returns a {@link Future} to obtain the connection.</p>
-     * <p>The caller must call {@link Future#get(long, TimeUnit)} if they wish to impose a connect timeout on the open.</p>
-     *
-     * @param uri The URI to connect to.
-     * @param websocket The {@link WebSocket} instance to handle incoming events.
+     * <p>
+     * Asynchronously opens a websocket connection and returns a {@link Future} to obtain the connection.
+     * </p>
+     * <p>
+     * The caller must call {@link Future#get(long, TimeUnit)} if they wish to impose a connect timeout on the open.
+     * </p>
+     * 
+     * @param uri
+     *            The URI to connect to.
+     * @param websocket
+     *            The {@link WebSocket} instance to handle incoming events.
      * @return A {@link Future} to the {@link WebSocket.Connection}
-     * @throws IOException if the connection fails
+     * @throws IOException
+     *             if the connection fails
      * @see #open(URI, WebSocket, long, TimeUnit)
      */
     public Future<WebSocket.Connection> open(URI uri, WebSocket websocket) throws IOException
@@ -395,7 +439,7 @@ public class WebSocketClient
             throw new IllegalStateException("Factory !started");
 
         LOG.debug("Opening websocket connection to " + uri + " (client websocket impl: " + websocket + ")");
-        
+
         InetSocketAddress address = toSocketAddress(uri);
 
         SocketChannel channel = SocketChannel.open();
@@ -403,11 +447,11 @@ public class WebSocketClient
             channel.socket().bind(_bindAddress);
         channel.socket().setTcpNoDelay(true);
 
-        WebSocketFuture holder = new WebSocketFuture(websocket, uri, this, channel);
+        WebSocketFuture holder = new WebSocketFuture(websocket,uri,this,channel);
 
         channel.configureBlocking(false);
         channel.connect(address);
-        _factory.getSelectorManager().register(channel, holder);
+        _factory.getSelectorManager().register(channel,holder);
 
         return holder;
     }
@@ -421,13 +465,14 @@ public class WebSocketClient
         if (port == 0)
             throw new IllegalArgumentException("Bad WebSocket port: " + port);
         if (port < 0)
-            port = "ws".equals(scheme) ? 80 : 443;
+            port = "ws".equals(scheme)?80:443;
 
-        return new InetSocketAddress(uri.getHost(), port);
+        return new InetSocketAddress(uri.getHost(),port);
     }
 
     /* ------------------------------------------------------------ */
-    /** The Future Websocket Connection.
+    /**
+     * The Future Websocket Connection.
      */
     static class WebSocketFuture implements Future<WebSocket.Connection>
     {
@@ -441,10 +486,10 @@ public class WebSocketClient
 
         private WebSocketFuture(WebSocket websocket, URI uri, WebSocketClient client, ByteChannel channel)
         {
-            _websocket=websocket;
-            _uri=uri;
-            _client=client;
-            _channel=channel;
+            _websocket = websocket;
+            _uri = uri;
+            _client = client;
+            _channel = channel;
         }
 
         public void onConnection(WebSocketConnection connection)
@@ -459,12 +504,12 @@ public class WebSocketClient
                 WebSocketConnection con;
                 synchronized (this)
                 {
-                    if (_channel!=null)
-                        _connection=connection;
-                    con=_connection;
+                    if (_channel != null)
+                        _connection = connection;
+                    con = _connection;
                 }
 
-                if (con!=null)
+                if (con != null)
                 {
                     if (_websocket instanceof WebSocket.OnFrame)
                         ((WebSocket.OnFrame)_websocket).onHandshake((WebSocket.FrameConnection)con.getConnection());
@@ -482,18 +527,18 @@ public class WebSocketClient
         {
             try
             {
-                ByteChannel channel=null;
+                ByteChannel channel = null;
                 synchronized (this)
                 {
-                    if (_channel!=null)
+                    if (_channel != null)
                     {
-                        channel=_channel;
-                        _channel=null;
-                        _exception=ex;
+                        channel = _channel;
+                        _channel = null;
+                        _exception = ex;
                     }
                 }
 
-                if (channel!=null)
+                if (channel != null)
                 {
                     if (ex instanceof ProtocolException)
                         closeChannel(channel,WebSocketConnectionRFC6455.CLOSE_PROTOCOL,ex.getMessage());
@@ -507,7 +552,7 @@ public class WebSocketClient
             }
         }
 
-        public Map<String,String> getCookies()
+        public Map<String, String> getCookies()
         {
             return _client.getCookies();
         }
@@ -541,7 +586,7 @@ public class WebSocketClient
         {
             return _client.getMaskGen();
         }
-        
+
         public List<String> getExtensions()
         {
             return _client.getExtensions();
@@ -550,24 +595,24 @@ public class WebSocketClient
         @Override
         public String toString()
         {
-            return "[" + _uri + ","+_websocket+"]@"+hashCode();
+            return "[" + _uri + "," + _websocket + "]@" + hashCode();
         }
 
         public boolean cancel(boolean mayInterruptIfRunning)
         {
             try
             {
-                ByteChannel channel=null;
+                ByteChannel channel = null;
                 synchronized (this)
                 {
-                    if (_connection==null && _exception==null && _channel!=null)
+                    if (_connection == null && _exception == null && _channel != null)
                     {
-                        channel=_channel;
-                        _channel=null;
+                        channel = _channel;
+                        _channel = null;
                     }
                 }
 
-                if (channel!=null)
+                if (channel != null)
                 {
                     closeChannel(channel,WebSocketConnectionRFC6455.CLOSE_NO_CLOSE,"cancelled");
                     return true;
@@ -584,7 +629,7 @@ public class WebSocketClient
         {
             synchronized (this)
             {
-                return _channel==null && _connection==null;
+                return _channel == null && _connection == null;
             }
         }
 
@@ -592,7 +637,7 @@ public class WebSocketClient
         {
             synchronized (this)
             {
-                return _connection!=null && _exception==null;
+                return _connection != null && _exception == null;
             }
         }
 
@@ -602,7 +647,7 @@ public class WebSocketClient
             {
                 return get(Long.MAX_VALUE,TimeUnit.SECONDS);
             }
-            catch(TimeoutException e)
+            catch (TimeoutException e)
             {
                 throw new IllegalStateException("The universe has ended",e);
             }
@@ -612,38 +657,38 @@ public class WebSocketClient
                 TimeoutException
         {
             _done.await(timeout,unit);
-            ByteChannel channel=null;
-            org.eclipse.jetty.websocket.WebSocket.Connection connection=null;
+            ByteChannel channel = null;
+            org.eclipse.jetty.websocket.WebSocket.Connection connection = null;
             Throwable exception;
             synchronized (this)
             {
-                exception=_exception;
-                if (_connection==null)
+                exception = _exception;
+                if (_connection == null)
                 {
-                    exception=_exception;
-                    channel=_channel;
-                    _channel=null;
+                    exception = _exception;
+                    channel = _channel;
+                    _channel = null;
                 }
                 else
-                    connection=_connection.getConnection();
+                    connection = _connection.getConnection();
             }
 
-            if (channel!=null)
+            if (channel != null)
                 closeChannel(channel,WebSocketConnectionRFC6455.CLOSE_NO_CLOSE,"timeout");
-            if (exception!=null)
+            if (exception != null)
                 throw new ExecutionException(exception);
-            if (connection!=null)
+            if (connection != null)
                 return connection;
             throw new TimeoutException();
         }
 
-        private void closeChannel(ByteChannel channel,int code, String message)
+        private void closeChannel(ByteChannel channel, int code, String message)
         {
             try
             {
                 _websocket.onClose(code,message);
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 LOG.warn(e);
             }
@@ -652,7 +697,7 @@ public class WebSocketClient
             {
                 channel.close();
             }
-            catch(IOException e)
+            catch (IOException e)
             {
                 LOG.debug(e);
             }

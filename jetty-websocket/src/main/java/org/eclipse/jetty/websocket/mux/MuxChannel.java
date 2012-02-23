@@ -13,7 +13,7 @@ public interface MuxChannel
      * @param channelId
      * @param connection
      */
-    public void onMuxOpen(int channelId, MuxConnection connection);
+    public void onMuxOpen(int channelId, MuxLogicalConnection connection);
     
     /**
      * Old connection was closed.
@@ -21,7 +21,7 @@ public interface MuxChannel
      * @param channelId
      * @param connection
      */
-    public void onMuxClose(int channelId, MuxConnection connection);
+    public void onMuxClose(int channelId, MuxLogicalConnection connection);
     
     /**
      * Delivered raw data to the channel.

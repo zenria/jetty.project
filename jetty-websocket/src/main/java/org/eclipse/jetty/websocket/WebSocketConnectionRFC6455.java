@@ -105,7 +105,7 @@ public class WebSocketConnectionRFC6455 extends AbstractConnection implements We
     final static int CLOSE_SERVER_ERROR=1011;
     final static int CLOSE_FAILED_TLS_HANDSHAKE=1015;
 
-    final static int FLAG_FIN=0x8;
+    public final static int FLAG_FIN=0x8;
 
     // Per RFC 6455, section 1.3 - Opening Handshake - this version is "13"
     public final static int VERSION=13;
@@ -187,6 +187,7 @@ public class WebSocketConnectionRFC6455 extends AbstractConnection implements We
             int e=0;
             for (Extension extension : _extensions)
             {
+                LOG.debug("Binding extension: " + extension);
                 extension.bind(
                         _connection,
                         e==extensions.size()-1? frameHandler :extensions.get(e+1),

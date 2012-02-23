@@ -37,6 +37,18 @@ public final class ExtensionManager
         return _registeredExtensions;
     }
 
+    public List<Extension> initExtensions(String rawRequested, Extension.Mode mode)
+    {
+        List<String> requested = new ArrayList<String>();
+        QuotedStringTokenizer tok = new QuotedStringTokenizer(rawRequested,",");
+        while (tok.hasMoreTokens())
+        {
+            requested.add(tok.nextToken());
+        }
+
+        return initExtensions(requested,mode);
+    }
+
     public List<Extension> initExtensions(List<String> requested, Extension.Mode mode)
     {
         List<Extension> extensions = new ArrayList<Extension>();

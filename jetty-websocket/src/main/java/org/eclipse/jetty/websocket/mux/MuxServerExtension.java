@@ -1,5 +1,7 @@
 package org.eclipse.jetty.websocket.mux;
 
+import java.util.Map;
+
 import javax.servlet.http.HttpServletRequest;
 
 import org.eclipse.jetty.websocket.WebSocket;
@@ -19,7 +21,9 @@ public class MuxServerExtension extends AbstractExtension implements ServerExten
     public MuxServerExtension(MuxExtension muxBase)
     {
         super(muxBase.getName());
-        init(muxBase.getInitParameters());
+        Map<String, String> params = muxBase.getInitParameters();
+        params.put("jetty-mode","server");
+        init(params);
     }
 
     public void onWebSocketServerFactory(WebSocketFactory factory)
