@@ -25,19 +25,32 @@ public class MuxedWebSocket implements MuxChannel, WebSocket, WebSocket.OnFrame,
     public MuxedWebSocket(WebSocket channel1)
     {
         _channels = new ArrayList<MuxChannel>();
-        _channels.set(0,this); // Channel 0
-        _channels.set(1,new MuxSubChannel(channel1)); // Channel 1
+        setChannel(0,this); // Channel 0
+        setChannel(1,new MuxSubChannel(channel1)); // Channel 1
+    }
+
+    private void setChannel(int channelNum, MuxChannel channel)
+    {
+        synchronized (_channels)
+        {
+            // Enough space in arraylist?
+            while (channelNum >= _channels.size())
+            {
+                _channels.add(null);
+            }
+            _channels.set(channelNum,channel);
+        }
     }
 
     public void onClose(int closeCode, String message)
     {
         this._physicalConnection = null;
-        
+
         // close other channels
         synchronized (_channels)
         {
             int len = _channels.size();
-            for (int id = len; id > 0; id--)
+            for (int id = len-1; id >= 0; id--)
             {
                 MuxChannel channel = _channels.get(id);
                 MuxConnection conn = new MuxConnection(id,_physicalConnection);

@@ -30,18 +30,27 @@ public class MuxSubChannel implements MuxChannel
     public void onMuxData(int channelId, byte[] data, int offset, int length)
     {
         // Send to underlying websocket impl
-        _onBinaryMessage.onMessage(data,offset,length);
+        if (_onBinaryMessage != null)
+        {
+            _onBinaryMessage.onMessage(data,offset,length);
+        }
     }
 
     public void onMuxOpen(int channelId, MuxConnection connection)
     {
         // Notify MUX of open connection
-        _onControl.onOpen(connection);
+        if (_onControl != null)
+        {
+            _onControl.onOpen(connection);
+        }
     }
 
     public void onMuxClose(int channelId, MuxConnection connection)
     {
         // Notify MUX of close connection
-        _onControl.onClose(WebSocketConnectionRFC6455.CLOSE_NORMAL,"channel closed normally");
+        if (_onControl != null)
+        {
+            _onControl.onClose(WebSocketConnectionRFC6455.CLOSE_NORMAL,"channel closed normally");
+        }
     }
 }
