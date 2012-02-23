@@ -24,12 +24,13 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.eclipse.jetty.websocket.WebSocket;
+import org.eclipse.jetty.websocket.WebSocketFactory;
 import org.eclipse.jetty.websocket.WebSocketServlet;
 
 @SuppressWarnings("serial") 
 public class WebSocketCaptureServlet extends WebSocketServlet
 {
-    public List<CaptureSocket> captures = new ArrayList<CaptureSocket>();;
+    public List<CaptureSocket> captures = new ArrayList<CaptureSocket>();
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException
@@ -42,5 +43,11 @@ public class WebSocketCaptureServlet extends WebSocketServlet
         CaptureSocket capture = new CaptureSocket();
         captures.add(capture);
         return capture;
+    }
+    
+    public int getConnectionCount()
+    {
+        WebSocketFactory factory = getWebSocketFactory();
+        return factory.getConnectionCount();
     }
 }

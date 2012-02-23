@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Random;
 import java.util.concurrent.ConcurrentLinkedQueue;
+
 import javax.net.ssl.SSLEngine;
 
 import org.eclipse.jetty.http.HttpFields;
@@ -45,10 +46,11 @@ import org.eclipse.jetty.io.nio.SslConnection;
 import org.eclipse.jetty.util.B64Code;
 import org.eclipse.jetty.util.QuotedStringTokenizer;
 import org.eclipse.jetty.util.component.AggregateLifeCycle;
-import org.eclipse.jetty.util.log.Logger;
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 import org.eclipse.jetty.util.thread.QueuedThreadPool;
 import org.eclipse.jetty.util.thread.ThreadPool;
+import org.eclipse.jetty.websocket.extensions.Extension;
+import org.eclipse.jetty.websocket.extensions.ExtensionManager;
 
 /* ------------------------------------------------------------ */
 /**
@@ -62,12 +64,12 @@ import org.eclipse.jetty.util.thread.ThreadPool;
  */
 public class WebSocketClientFactory extends AggregateLifeCycle
 {
-    private final static Logger __log = org.eclipse.jetty.util.log.Log.getLogger(WebSocketClientFactory.class.getName());
     private final static ByteArrayBuffer __ACCEPT = new ByteArrayBuffer.CaseInsensitive("Sec-WebSocket-Accept");
     private final Queue<WebSocketConnection> connections = new ConcurrentLinkedQueue<WebSocketConnection>();
     private final SslContextFactory _sslContextFactory = new SslContextFactory();
     private final ThreadPool _threadPool;
     private final WebSocketClientSelector _selector;
+    private final ExtensionManager _extensionManager = new ExtensionManager();
     private MaskGen _maskGen;
     private WebSocketBuffers _buffers;
 
@@ -185,6 +187,15 @@ public class WebSocketClientFactory extends AggregateLifeCycle
         removeBean(_maskGen);
         _maskGen = maskGen;
         addBean(maskGen);
+    }
+    
+    /* ------------------------------------------------------------ */
+    /**
+     * @return The Registered Extensions Manager
+     */
+    public ExtensionManager getExtensionManager()
+    {
+        return _extensionManager;
     }
 
     /* ------------------------------------------------------------ */
@@ -333,7 +344,7 @@ public class WebSocketClientFactory extends AggregateLifeCycle
                 super.connectionFailed(channel, ex, attachment);
             else
             {
-                __log.debug(ex);
+                LOG.debug(ex);
                 WebSocketClient.WebSocketFuture future = (WebSocketClient.WebSocketFuture)attachment;
 
                 future.handshakeFailed(ex);
@@ -410,39 +421,63 @@ public class WebSocketClientFactory extends AggregateLifeCycle
             {
                 String path = _future.getURI().getPath();
                 if (path == null || path.length() == 0)
+                {
                     path = "/";
+                }
 
                 if (_future.getURI().getRawQuery() != null)
+                {
                     path += "?" + _future.getURI().getRawQuery();
+                }
 
                 String origin = _future.getOrigin();
 
                 StringBuilder request = new StringBuilder(512);
-                request.append("GET ").append(path).append(" HTTP/1.1\r\n")
-                .append("Host: ").append(_future.getURI().getHost()).append(":")
-                .append(_future.getURI().getPort()).append("\r\n")
-                .append("Upgrade: websocket\r\n")
-                .append("Connection: Upgrade\r\n")
-                .append("Sec-WebSocket-Key: ")
-                .append(_key).append("\r\n");
+                request.append("GET ").append(path).append(" HTTP/1.1\r\n");
+                request.append("Host: ").append(_future.getURI().getHost()).append(":").append(_future.getURI().getPort()).append("\r\n");
+                request.append("Upgrade: websocket\r\n");
+                request.append("Connection: Upgrade\r\n");
+                request.append("Sec-WebSocket-Key: ").append(_key).append("\r\n");
 
                 if (origin != null)
+                {
                     request.append("Origin: ").append(origin).append("\r\n");
+                }
 
                 request.append("Sec-WebSocket-Version: ").append(WebSocketConnectionRFC6455.VERSION).append("\r\n");
 
                 if (_future.getProtocol() != null)
+                {
                     request.append("Sec-WebSocket-Protocol: ").append(_future.getProtocol()).append("\r\n");
+                }
+                
+                if ((_future.getExtensions() != null) && (!_future.getExtensions().isEmpty()))
+                {
+                    request.append("Sec-WebSocket-Extensions: ");
+                    boolean delim = false;
+                    for (String ext : _future.getExtensions())
+                    {
+                        if (delim)
+                        {
+                            request.append(", ");
+                        }
+                        request.append(ext);
+                        delim = true;
+                    }
+                    request.append("\r\n");
+                }
 
                 Map<String, String> cookies = _future.getCookies();
                 if (cookies != null && cookies.size() > 0)
                 {
                     for (String cookie : cookies.keySet())
+                    {
                         request.append("Cookie: ")
                         .append(QuotedStringTokenizer.quoteIfNeeded(cookie, HttpFields.__COOKIE_DELIM))
                         .append("=")
                         .append(QuotedStringTokenizer.quoteIfNeeded(cookies.get(cookie), HttpFields.__COOKIE_DELIM))
                         .append("\r\n");
+                    }
                 }
 
                 request.append("\r\n");
@@ -450,11 +485,8 @@ public class WebSocketClientFactory extends AggregateLifeCycle
                 _handshake=new ByteArrayBuffer(request.toString(), false);
             }
             
-            // TODO extensions
-
             try
             {
-                int len = _handshake.length();
                 int flushed = _endp.flush(_handshake);
                 if (flushed<0)
                     throw new IOException("incomplete handshake");
@@ -512,6 +544,13 @@ public class WebSocketClientFactory extends AggregateLifeCycle
 
         private WebSocketConnection newWebSocketConnection() throws IOException
         {
+            List<Extension> extensions = null;
+            
+            if ((_future.getExtensions() != null) && (!_future.getExtensions().isEmpty()))
+            {
+                extensions = _extensionManager.initExtensions(_future.getExtensions(), Extension.Mode.CLIENT);
+            }
+            
             return new WebSocketClientConnection(
                     _future._client.getFactory(),
                     _future.getWebSocket(),
@@ -520,11 +559,11 @@ public class WebSocketClientFactory extends AggregateLifeCycle
                     System.currentTimeMillis(),
                     _future.getMaxIdleTime(),
                     _future.getProtocol(),
-                    null,
+                    extensions,
                     WebSocketConnectionRFC6455.VERSION,
                     _future.getMaskGen());
         }
-
+        
         public void onInputShutdown() throws IOException
         {
             _endp.close();
@@ -543,9 +582,13 @@ public class WebSocketClientFactory extends AggregateLifeCycle
         public void onClose()
         {
             if (_error != null)
+            {
                 _future.handshakeFailed(new ProtocolException(_error));
+            }
             else
+            {
                 _future.handshakeFailed(new EOFException());
+            }
         }
     }
 

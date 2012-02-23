@@ -13,7 +13,7 @@
  *
  * You may elect to redistribute this code under either of these licenses.
  *******************************************************************************/
-package org.eclipse.jetty.websocket;
+package org.eclipse.jetty.websocket.extensions;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -21,6 +21,8 @@ import java.util.Map;
 
 import org.eclipse.jetty.io.Buffer;
 import org.eclipse.jetty.util.QuotedStringTokenizer;
+import org.eclipse.jetty.websocket.WebSocket;
+import org.eclipse.jetty.websocket.WebSocketGenerator;
 import org.eclipse.jetty.websocket.WebSocketParser.FrameHandler;
 
 public class AbstractExtension implements Extension
@@ -68,6 +70,17 @@ public class AbstractExtension implements Extension
         return Integer.valueOf(v);
     }
     
+    public WebSocket bindWebSocket(WebSocket websocket)
+    {
+        // return websocket itself for the default implementation.
+        return websocket;
+    }
+    
+    public Extension getImplementation(Mode mode)
+    {
+        // return self for default implementation.
+        return this;
+    }
     
     public void bind(WebSocket.FrameConnection connection, FrameHandler incoming, WebSocketGenerator outgoing)
     {
@@ -111,6 +124,9 @@ public class AbstractExtension implements Extension
         return _outbound.isBufferEmpty();
     }
 
+    /**
+     * Process outgoing frames.
+     */
     public void addFrame(byte flags, byte opcode, byte[] content, int offset, int length) throws IOException
     {
         // System.err.printf("addFrame %s %x %x %d\n",getExtensionName(),flags,opcode,length);
@@ -139,6 +155,7 @@ public class AbstractExtension implements Extension
         return (flags & __mask[rsv])!=0;
     }
     
+    @Override
     public String toString()
     {
         return getParameterizedName();

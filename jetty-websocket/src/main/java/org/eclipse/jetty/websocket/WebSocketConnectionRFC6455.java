@@ -50,6 +50,7 @@ import org.eclipse.jetty.websocket.WebSocket.OnBinaryMessage;
 import org.eclipse.jetty.websocket.WebSocket.OnControl;
 import org.eclipse.jetty.websocket.WebSocket.OnFrame;
 import org.eclipse.jetty.websocket.WebSocket.OnTextMessage;
+import org.eclipse.jetty.websocket.extensions.Extension;
 
 
 /* ------------------------------------------------------------ */
@@ -97,7 +98,7 @@ public class WebSocketConnectionRFC6455 extends AbstractConnection implements We
     final static int CLOSE_UNDEFINED=1004;
     final static int CLOSE_NO_CODE=1005;
     final static int CLOSE_NO_CLOSE=1006;
-    final static int CLOSE_BAD_PAYLOAD=1007;
+    public final static int CLOSE_BAD_PAYLOAD=1007;
     final static int CLOSE_POLICY_VIOLATION=1008;
     final static int CLOSE_MESSAGE_TOO_LARGE=1009;
     final static int CLOSE_REQUIRED_EXTENSION=1010;

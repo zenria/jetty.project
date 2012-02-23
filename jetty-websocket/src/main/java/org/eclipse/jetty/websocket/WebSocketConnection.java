@@ -20,6 +20,7 @@ import java.util.List;
 
 import org.eclipse.jetty.io.Buffer;
 import org.eclipse.jetty.io.nio.AsyncConnection;
+import org.eclipse.jetty.websocket.extensions.Extension;
 
 public interface WebSocketConnection extends AsyncConnection
 {

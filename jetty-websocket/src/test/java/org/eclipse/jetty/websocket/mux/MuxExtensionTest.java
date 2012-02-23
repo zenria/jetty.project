@@ -9,6 +9,9 @@ import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.eclipse.jetty.util.log.Log;
+import org.eclipse.jetty.util.log.Logger;
+import org.eclipse.jetty.util.log.StdErrLog;
 import org.eclipse.jetty.websocket.WebSocket;
 import org.eclipse.jetty.websocket.WebSocket.Connection;
 import org.eclipse.jetty.websocket.WebSocketClient;
@@ -30,6 +33,14 @@ public class MuxExtensionTest
     @Before
     public void startServer() throws Exception
     {
+        // Enable DEBUG logging for websocket classes.
+        enableDebugLogging(MuxExtension.class);
+        enableDebugLogging(MuxChannel.class);
+        enableDebugLogging(MuxConnection.class);
+        enableDebugLogging(MuxedWebSocket.class);
+        enableDebugLogging(MuxSubChannel.class);
+        enableDebugLogging(WebSocketClient.class);
+
         // Configure Server
         server = new Server(0);
 
@@ -56,6 +67,15 @@ public class MuxExtensionTest
 
         clientFactory = new WebSocketClientFactory();
         clientFactory.start();
+    }
+
+    private void enableDebugLogging(Class<?> clazz)
+    {
+        Logger log = Log.getLogger(clazz);
+        if (log instanceof StdErrLog)
+        {
+            ((StdErrLog)log).setLevel(StdErrLog.LEVEL_DEBUG);
+        }
     }
 
     @After
@@ -106,7 +126,7 @@ public class MuxExtensionTest
             conn2.sendMessage("bye");
             conn1.sendMessage(" world");
 
-            assertPhysicalConnections(serverUri,client,1);
+            Assert.assertThat("Active server connection count",servlet.getConnectionCount(),is(1));
 
             Assert.assertThat("servlet",servlet.captures.size(),is(2));
         }
@@ -115,18 +135,6 @@ public class MuxExtensionTest
             close(conn1);
             close(conn2);
         }
-    }
-
-    /**
-     * Test for connections
-     * @param serverUri2
-     * @param client
-     * @param i
-     */
-    private void assertPhysicalConnections(URI serverUri2, WebSocketClient client, int i)
-    {
-        // TODO Auto-generated method stub
-        
     }
 
     private void close(Connection conn)

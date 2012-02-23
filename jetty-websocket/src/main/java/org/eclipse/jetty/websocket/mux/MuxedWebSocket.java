@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.jetty.websocket.WebSocket;
-import org.eclipse.jetty.websocket.WebSocketFactory;
 
 /**
  * Represents the physical websocket in a mux extension socket scenario.
@@ -13,12 +12,6 @@ import org.eclipse.jetty.websocket.WebSocketFactory;
  */
 public class MuxedWebSocket implements MuxChannel, WebSocket, WebSocket.OnFrame, WebSocket.OnBinaryMessage, WebSocket.OnTextMessage, WebSocket.OnControl
 {
-    /**
-     * Represents the implemented acceptor that handles the creation of new WebSocket implementations that become bound
-     * to a specific channel.
-     */
-    private WebSocketFactory.Acceptor _acceptor;
-
     /**
      * The list of channels.
      */
@@ -29,21 +22,35 @@ public class MuxedWebSocket implements MuxChannel, WebSocket, WebSocket.OnFrame,
      */
     private Connection _physicalConnection;
 
-    public MuxedWebSocket(WebSocketFactory.Acceptor acceptor)
+    public MuxedWebSocket(WebSocket channel1)
     {
         _channels = new ArrayList<MuxChannel>();
+        _channels.set(0,this); // Channel 0
+        _channels.set(1,new MuxSubChannel(channel1)); // Channel 1
     }
 
     public void onClose(int closeCode, String message)
     {
         this._physicalConnection = null;
-        // TODO: close all muxed channels.
+        
+        // close other channels
+        synchronized (_channels)
+        {
+            int len = _channels.size();
+            for (int id = len; id > 0; id--)
+            {
+                MuxChannel channel = _channels.get(id);
+                MuxConnection conn = new MuxConnection(id,_physicalConnection);
+                conn.close();
+                channel.onMuxClose(id,conn);
+                _channels.remove(id);
+            }
+        }
     }
 
     public boolean onControl(byte controlCode, byte[] data, int offset, int length)
     {
         // DO NOT pass control frames to muxed channels
-        // TODO Auto-generated method stub
         return false;
     }
 
@@ -79,6 +86,17 @@ public class MuxedWebSocket implements MuxChannel, WebSocket, WebSocket.OnFrame,
 
         // Create channel 0 (mux control channel)
         this._channels.set(0,this);
+
+        // Update other channels
+        synchronized (_channels)
+        {
+            int len = _channels.size();
+            for (int id = 1; id < len; id++)
+            {
+                MuxChannel channel = _channels.get(id);
+                channel.onMuxOpen(id,new MuxConnection(id,this._physicalConnection));
+            }
+        }
     }
 
     /**

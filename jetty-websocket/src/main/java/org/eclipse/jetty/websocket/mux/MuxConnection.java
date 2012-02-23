@@ -5,14 +5,29 @@ import java.io.IOException;
 import org.eclipse.jetty.websocket.WebSocket.Connection;
 
 /**
- * MuxConnection is a logic connection for the {@link MuxExtension}
+ * MuxConnection is a logical connection for the {@link MuxExtension}, allowing WebSocket implementations access to a
+ * connection object suitable for working with the specific {@link MuxChannel}, without having access to the physical
+ * Connection.
  */
 public class MuxConnection implements Connection
 {
+    private final int _id;
+    private final Connection _physicalConnection;
+
+    public MuxConnection(int id, Connection physicalConnection)
+    {
+        this._id = id;
+        this._physicalConnection = physicalConnection;
+    }
+
+    public int getId()
+    {
+        return _id;
+    }
+
     public String getProtocol()
     {
-        // TODO Auto-generated method stub
-        return null;
+        return _physicalConnection.getProtocol();
     }
 
     public void sendMessage(String data) throws IOException
@@ -42,40 +57,36 @@ public class MuxConnection implements Connection
 
     public boolean isOpen()
     {
-        // TODO Auto-generated method stub
-        return false;
+        return _physicalConnection.isOpen();
     }
 
     public void setMaxIdleTime(int ms)
     {
-        // TODO Auto-generated method stub
+        _physicalConnection.setMaxIdleTime(ms);
     }
 
     public void setMaxTextMessageSize(int size)
     {
-        // TODO Auto-generated method stub
+        _physicalConnection.setMaxTextMessageSize(size);
     }
 
     public void setMaxBinaryMessageSize(int size)
     {
-        // TODO Auto-generated method stub
+        _physicalConnection.setMaxBinaryMessageSize(size);
     }
 
     public int getMaxIdleTime()
     {
-        // TODO Auto-generated method stub
-        return 0;
+        return _physicalConnection.getMaxIdleTime();
     }
 
     public int getMaxTextMessageSize()
     {
-        // TODO Auto-generated method stub
-        return 0;
+        return _physicalConnection.getMaxTextMessageSize();
     }
 
     public int getMaxBinaryMessageSize()
     {
-        // TODO Auto-generated method stub
-        return 0;
+        return _physicalConnection.getMaxBinaryMessageSize();
     }
 }

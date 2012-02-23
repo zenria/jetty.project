@@ -16,6 +16,7 @@
 package org.eclipse.jetty.websocket;
 
 import java.io.IOException;
+
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 

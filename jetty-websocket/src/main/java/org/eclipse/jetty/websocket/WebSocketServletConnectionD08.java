@@ -21,6 +21,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.eclipse.jetty.io.EndPoint;
+import org.eclipse.jetty.websocket.extensions.Extension;
 
 public class WebSocketServletConnectionD08 extends WebSocketConnectionD08 implements WebSocketServletConnection
 {

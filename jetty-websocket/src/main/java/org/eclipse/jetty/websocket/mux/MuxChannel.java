@@ -7,8 +7,20 @@ package org.eclipse.jetty.websocket.mux;
  */
 public interface MuxChannel
 {
+    /**
+     * New connection was opened.
+     * 
+     * @param channelId
+     * @param connection
+     */
     public void onMuxOpen(int channelId, MuxConnection connection);
     
+    /**
+     * Old connection was closed.
+     * 
+     * @param channelId
+     * @param connection
+     */
     public void onMuxClose(int channelId, MuxConnection connection);
     
     /**

@@ -73,7 +73,7 @@ import org.eclipse.jetty.util.log.Logger;
  */
 public class WebSocketClient
 {
-    private final static Logger __log = org.eclipse.jetty.util.log.Log.getLogger(WebSocketClient.class.getName());
+    private final static Logger LOG = org.eclipse.jetty.util.log.Log.getLogger(WebSocketClient.class.getName());
 
     private final WebSocketClientFactory _factory;
     private final Map<String,String> _cookies=new ConcurrentHashMap<String, String>();
@@ -242,6 +242,26 @@ public class WebSocketClient
             _extensions.add(name);
         }
     }
+    
+    /* ------------------------------------------------------------ */
+    /**
+     * Add an extension to the list of extensions, with parameters.
+     * <p>
+     * The name is added to the end if it doesn't exist already in the
+     * list of extensions.
+     * <p>
+     * If the name already exists, no change to the list of extensions is performed.
+     * 
+     * @param name the name of the extension to add
+     * @param parameters the parameters for the extension
+     */
+    public void addExtension(String name, Map<String, String> parameters)
+    {
+        if (!_extensions.contains(name))
+        {
+            _extensions.add(name);
+        }
+    }
 
     /* ------------------------------------------------------------ */
     /**
@@ -374,6 +394,8 @@ public class WebSocketClient
         if (!_factory.isStarted())
             throw new IllegalStateException("Factory !started");
 
+        LOG.debug("Opening websocket connection to " + uri + " (client websocket impl: " + websocket + ")");
+        
         InetSocketAddress address = toSocketAddress(uri);
 
         SocketChannel channel = SocketChannel.open();
@@ -519,6 +541,11 @@ public class WebSocketClient
         {
             return _client.getMaskGen();
         }
+        
+        public List<String> getExtensions()
+        {
+            return _client.getExtensions();
+        }
 
         @Override
         public String toString()
@@ -618,7 +645,7 @@ public class WebSocketClient
             }
             catch(Exception e)
             {
-                __log.warn(e);
+                LOG.warn(e);
             }
 
             try
@@ -627,7 +654,7 @@ public class WebSocketClient
             }
             catch(IOException e)
             {
-                __log.debug(e);
+                LOG.debug(e);
             }
         }
     }

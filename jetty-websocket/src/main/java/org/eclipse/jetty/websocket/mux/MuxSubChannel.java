@@ -15,8 +15,6 @@ public class MuxSubChannel implements MuxChannel
 {
     private WebSocket _webSocket;
 
-    // TODO: determine how many of these are valid under mux conditions.
-    // private WebSocket.OnFrame _onFrame; // not MUX possible
     private WebSocket.OnTextMessage _onTextMessage;
     private WebSocket.OnBinaryMessage _onBinaryMessage;
     private WebSocket.OnControl _onControl;
@@ -24,7 +22,6 @@ public class MuxSubChannel implements MuxChannel
     public MuxSubChannel(WebSocket websocket)
     {
         _webSocket = websocket;
-        // _onFrame = _webSocket instanceof OnFrame?(OnFrame)_webSocket:null;
         _onTextMessage = _webSocket instanceof OnTextMessage?(OnTextMessage)_webSocket:null;
         _onBinaryMessage = _webSocket instanceof OnBinaryMessage?(OnBinaryMessage)_webSocket:null;
         _onControl = _webSocket instanceof OnControl?(OnControl)_webSocket:null;
