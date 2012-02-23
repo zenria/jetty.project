@@ -44,7 +44,7 @@ public class SafariWebsocketDraft0Test
     {
         // Configure Logging
         // System.setProperty("org.eclipse.jetty.util.log.class",StdErrLog.class.getName());
-        // System.setProperty("org.eclipse.jetty.LEVEL","DEBUG");
+        System.setProperty("org.eclipse.jetty.websocket.helper.LEVEL","DEBUG");
     }
 
     @Before
