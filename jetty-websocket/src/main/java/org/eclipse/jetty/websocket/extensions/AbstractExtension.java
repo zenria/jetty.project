@@ -20,7 +20,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.eclipse.jetty.io.Buffer;
-import org.eclipse.jetty.util.QuotedStringTokenizer;
 import org.eclipse.jetty.websocket.WebSocket;
 import org.eclipse.jetty.websocket.WebSocketGenerator;
 import org.eclipse.jetty.websocket.WebSocketParser.FrameHandler;
@@ -96,11 +95,7 @@ public class AbstractExtension implements Extension
 
     public String getParameterizedName()
     {
-        StringBuilder name = new StringBuilder();
-        name.append(_name);
-        for (String param : _parameters.keySet())
-            name.append(';').append(param).append('=').append(QuotedStringTokenizer.quoteIfNeeded(_parameters.get(param),";="));
-        return name.toString();
+        return ExtensionManager.parameterize(_name,_parameters);
     }
 
     public void onFrame(byte flags, byte opcode, Buffer buffer)

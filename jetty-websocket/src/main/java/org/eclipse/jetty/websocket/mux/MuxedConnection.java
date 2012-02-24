@@ -1,3 +1,18 @@
+/*******************************************************************************
+ * Copyright (c) 1995-2012 Mort Bay Consulting Pty Ltd.
+ * ======================================================================
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Apache License v2.0 which accompanies this distribution.
+ *
+ *   The Eclipse Public License is available at
+ *   http://www.eclipse.org/legal/epl-v10.html
+ *
+ *   The Apache License v2.0 is available at
+ *   http://www.opensource.org/licenses/apache2.0.php
+ *
+ * You may elect to redistribute this code under either of these licenses.
+ *******************************************************************************/
 package org.eclipse.jetty.websocket.mux;
 
 import java.io.IOException;
@@ -43,11 +58,24 @@ public abstract class MuxedConnection implements Connection, WebSocket
             {
                 _logicalConnections.add(null);
             }
+            
             MuxLogicalConnection connection = new MuxLogicalConnection(channelNum,this,websocket);
             _logicalConnections.set(channelNum,connection);
             LOG.info("Adding Logical Channel " + channelNum + ": " + connection);
             return connection;
         }
+    }
+    
+    public void onOpen(Connection connection)
+    {
+        // TODO Auto-generated method stub
+        
+    }
+
+    public void onClose(int closeCode, String message)
+    {
+        // TODO Auto-generated method stub
+        
     }
 
     public void close()
@@ -134,4 +162,15 @@ public abstract class MuxedConnection implements Connection, WebSocket
         _physicalConnection.setMaxTextMessageSize(size);
     }
 
+    protected int requestUnusedChannelNum()
+    {
+        // TODO: find unused channel number, reserve it, and return it.
+        // TODO: consider having something like PendingConnection object to hold this state?
+        return 0;
+    }
+
+    protected void relenquishChannelNum(int channelNum)
+    {
+        
+    }
 }

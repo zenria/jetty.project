@@ -82,7 +82,7 @@ public class WebSocketClient
 
     private final WebSocketClientFactory _factory;
     private final Map<String, String> _cookies = new ConcurrentHashMap<String, String>();
-    private final List<String> _extensions = new CopyOnWriteArrayList<String>();
+    private final List<String> _requestedExtensions = new CopyOnWriteArrayList<String>();
     private String _origin;
     private String _protocol;
     private int _maxIdleTime = -1;
@@ -237,30 +237,52 @@ public class WebSocketClient
 
     /* ------------------------------------------------------------ */
     /**
-     * @return The list of websocket protocol extensions
+     * The list of extension names (and optional parameters) that will be issued to the websocket server as part of the
+     * WebSocket request for upgrade/handshake.
+     * <p>
+     * See the {@link WebSocketConnection#getExtensions()} for list of actual extensions in use by the connection (as a
+     * direct result of the websocket handshake response)
+     * 
+     * @return The list of websocket protocol extension names (and optional parameters)
      */
     public List<String> getExtensions()
     {
-        return _extensions;
+        return _requestedExtensions;
     }
 
     /* ------------------------------------------------------------ */
     /**
      * Add an extension to the list of extensions.
      * <p>
-     * The name is added to the end if it doesn't exist already in the list of extensions.
+     * The name (and optional parameters) is added to the end of the list of extensions, regardless if it exists or not.
      * <p>
-     * If the name already exists, no change to the list of extensions is performed.
+     * Note: the parameters must be properly formatted to function properly. See <a
+     * href="http://tools.ietf.org/html/rfc6455#section-9.1">RFC 6455 - Sec 9.1 - Negotiating Extensions</a> for
+     * details.
+     * <p>
+     * Optionally use the {@link #addExtension(String, Map)} method to allow for proper parameter formatting.
+     * <p>
+     * Examples:
+     * 
+     * <pre>
+     * // Valid Syntax
+     * addExtension(&quot;mux&quot;);
+     * addExtension(&quot;identity; id=debug&quot;);
+     * addExtension(&quot;deflate&quot;);
+     * 
+     * // Invalid Syntax
+     * addExtension(&quot;my extension&quot;); // spaces in extension name are not valid
+     * addExtension(&quot;identity, deflate&quot;); // don't specify multiple extensions here
+     * addExtension(&quot;deflate=gzip&quot;); // not how you specify parameters
+     * </pre>
      * 
      * @param name
      *            the name of the extension to add
+     * @see #addExtension(String, Map)
      */
     public void addExtension(String name)
     {
-        if (!_extensions.contains(name))
-        {
-            _extensions.add(name);
-        }
+        _requestedExtensions.add(name);
     }
 
     /* ------------------------------------------------------------ */
@@ -278,10 +300,7 @@ public class WebSocketClient
      */
     public void addExtension(String name, Map<String, String> parameters)
     {
-        if (!_extensions.contains(name))
-        {
-            _extensions.add(name);
-        }
+        _requestedExtensions.add(name);
     }
 
     /* ------------------------------------------------------------ */
@@ -293,16 +312,12 @@ public class WebSocketClient
      */
     public void setExtensions(String... names)
     {
-        synchronized (_extensions)
+        synchronized (_requestedExtensions)
         {
-            _extensions.clear();
+            _requestedExtensions.clear();
             for (String name : names)
             {
-                if (_extensions.contains(name))
-                {
-                    throw new IllegalArgumentException("Duplicate extension: " + name);
-                }
-                _extensions.add(name);
+                _requestedExtensions.add(name);
             }
         }
     }
@@ -436,7 +451,11 @@ public class WebSocketClient
     public Future<WebSocket.Connection> open(URI uri, WebSocket websocket) throws IOException
     {
         if (!_factory.isStarted())
+        {
             throw new IllegalStateException("Factory !started");
+        }
+
+        // Let extensions process ClientExtension.establishConnection()
 
         LOG.debug("Opening websocket connection to " + uri + " (client websocket impl: " + websocket + ")");
 

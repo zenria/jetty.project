@@ -1,3 +1,18 @@
+/*******************************************************************************
+ * Copyright (c) 1995-2012 Mort Bay Consulting Pty Ltd.
+ * ======================================================================
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Apache License v2.0 which accompanies this distribution.
+ *
+ *   The Eclipse Public License is available at
+ *   http://www.eclipse.org/legal/epl-v10.html
+ *
+ *   The Apache License v2.0 is available at
+ *   http://www.opensource.org/licenses/apache2.0.php
+ *
+ * You may elect to redistribute this code under either of these licenses.
+ *******************************************************************************/
 package org.eclipse.jetty.websocket;
 
 import static org.hamcrest.Matchers.*;
@@ -34,10 +49,6 @@ public class ExtensionChainingTest
     public void startServer() throws Exception
     {
         // Enable DEBUG logging for websocket classes.
-        // enableDebugLogging(WebSocketClient.class);
-        enableDebugLogging(WebSocketClientFactory.class);
-        enableDebugLogging(WebSocketFactory.class);
-        enableDebugLogging(WebSocketConnectionRFC6455.class);
         // enableDebugLogging(DebugExtension.class);
 
         // Configure Server
@@ -72,7 +83,7 @@ public class ExtensionChainingTest
         clientFactory.start();
     }
 
-    private void enableDebugLogging(Class<?> clazz)
+    public static void enableDebugLogging(Class<?> clazz)
     {
         Logger log = Log.getLogger(clazz);
         if (log instanceof StdErrLog)
@@ -95,7 +106,7 @@ public class ExtensionChainingTest
         DebugExtension.setCapture("");
 
         WebSocketClient client = clientFactory.newWebSocketClient();
-        client.setExtensions("debug; id=1, debug; id=2, debug; id=3, debug; id=4");
+        client.setExtensions("debug; id=1", "debug; id=2", "debug; id=3", "debug; id=4");
         WebSocket.Connection conn = null;
 
         try
