@@ -37,7 +37,7 @@ public class ExtensionChainingTest
         // enableDebugLogging(WebSocketClient.class);
         enableDebugLogging(WebSocketClientFactory.class);
         enableDebugLogging(WebSocketFactory.class);
-        // enableDebugLogging(WebSocketConnectionRFC6455.class);
+        enableDebugLogging(WebSocketConnectionRFC6455.class);
         // enableDebugLogging(DebugExtension.class);
 
         // Configure Server
@@ -104,7 +104,7 @@ public class ExtensionChainingTest
             conn.sendMessage("hello world");
 
             Assert.assertThat("servlet",servlet.captures.size(),is(1));
-
+            Assert.assertThat("capture text", servlet.captures.get(0).messages, contains("hello world"));
         }
         finally
         {

@@ -32,7 +32,9 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.ListIterator;
 
 import org.eclipse.jetty.io.AbstractConnection;
 import org.eclipse.jetty.io.AsyncEndPoint;
@@ -121,7 +123,7 @@ public class WebSocketConnectionRFC6455 extends AbstractConnection implements We
     }
 
     private final static byte[] MAGIC;
-    private final List<Extension> _extensions;
+    private final LinkedList<Extension> _extensions;
     private final WebSocketParserRFC6455 _parser;
     private final WebSocketGeneratorRFC6455 _generator;
     private final WebSocketGenerator _outbound;
@@ -131,7 +133,6 @@ public class WebSocketConnectionRFC6455 extends AbstractConnection implements We
     private final OnTextMessage _onTextMessage;
     private final OnControl _onControl;
     private final String _protocol;
-    private final int _draft;
     private final ClassLoader _context;
     private volatile int _closeCode;
     private volatile String _closeMessage;
@@ -156,6 +157,29 @@ public class WebSocketConnectionRFC6455 extends AbstractConnection implements We
 
 
     /* ------------------------------------------------------------ */
+    /**
+     * Create a WebSocketConnection conforming to <a href="http://tools.ietf.org/html/rfc6455">RFC 6455</a> spec.
+     * 
+     * @param websocket
+     *            the {@link WebSocket} implementation to communicate with
+     * @param endpoint
+     *            the raw physical endpoint to communicate with.
+     * @param buffers
+     *            the buffers to use for communications.
+     * @param timestamp
+     *            the timestamp when the connection was created, used for statistics collection
+     * @param maxIdleTime
+     *            the idle timeout configuration for the connection
+     * @param protocol
+     *            the <a href="http://tools.ietf.org/html/rfc6455#section-11.3.4">websocket sub-protocol</a> in use.
+     * @param extensions
+     *            the acknowledged and active extensions.
+     * @param draft
+     *            the websocket draft/version specification referenced in the websocket handshake. (not used by this
+     *            implementation)
+     * @throws IOException
+     *             for any connection creation issues
+     */
     public WebSocketConnectionRFC6455(WebSocket websocket, EndPoint endpoint, WebSocketBuffers buffers, long timestamp, int maxIdleTime, String protocol, List<Extension> extensions,int draft)
         throws IOException
     {
@@ -163,6 +187,33 @@ public class WebSocketConnectionRFC6455 extends AbstractConnection implements We
     }
 
     /* ------------------------------------------------------------ */
+    /**
+     * Create a WebSocketConnection conforming to <a href="http://tools.ietf.org/html/rfc6455">RFC 6455</a> spec.
+     * 
+     * @param websocket
+     *            the {@link WebSocket} implementation to communicate with
+     * @param endpoint
+     *            the raw physical endpoint to communicate with.
+     * @param buffers
+     *            the buffers to use for communications.
+     * @param timestamp
+     *            the timestamp when the connection was created, used for statistics collection
+     * @param maxIdleTime
+     *            the idle timeout configuration for the connection
+     * @param protocol
+     *            the <a href="http://tools.ietf.org/html/rfc6455#section-11.3.4">websocket sub-protocol</a> in use.
+     * @param extensions
+     *            the acknowledged and active extensions.
+     * @param draft
+     *            the websocket draft/version specification referenced in the websocket handshake. (not used by this
+     *            implementation)
+     * @param maskgen
+     *            the {@link MaskGen} to use for outbound generation of frames. See <a
+     *            href="http://tools.ietf.org/html/rfc6455#section-5.3">RFC 6455 - Section 5.3 - Client-to-Server
+     *            Masking</a> for details.
+     * @throws IOException
+     *             for any connection creation issues
+     */
     public WebSocketConnectionRFC6455(WebSocket websocket, EndPoint endpoint, WebSocketBuffers buffers, long timestamp, int maxIdleTime, String protocol, List<Extension> extensions,int draft, MaskGen maskgen)
         throws IOException
     {
@@ -170,7 +221,6 @@ public class WebSocketConnectionRFC6455 extends AbstractConnection implements We
 
         _context=Thread.currentThread().getContextClassLoader();
 
-        _draft=draft;
         _endp.setMaxIdleTime(maxIdleTime);
 
         _webSocket = websocket;
@@ -180,26 +230,43 @@ public class WebSocketConnectionRFC6455 extends AbstractConnection implements We
         _onControl=_webSocket instanceof OnControl ? (OnControl)_webSocket : null;
         _generator = new WebSocketGeneratorRFC6455(buffers, _endp,maskgen);
 
-        _extensions=extensions;
-        WebSocketParser.FrameHandler frameHandler = new WSFrameHandler();
-        if (_extensions!=null)
+        _extensions = new LinkedList<Extension>();
+        if (extensions != null)
         {
-            int e=0;
-            for (Extension extension : _extensions)
+            _extensions.addAll(extensions);
+        }
+        
+        WebSocketParser.FrameHandler inbound = new WSFrameHandler();
+        WebSocketGenerator outbound = _generator;
+        
+        if (!_extensions.isEmpty())
+        {
+            // Wire up the inbound (WebSocketParser.FrameHandler) and
+            // outbound (WebSocketGenerator) to the extensions.
+
+            ListIterator<Extension> iter = _extensions.listIterator();
+            while (iter.hasNext())
             {
+                // Wire up current outbound to prior outbound (if present)
+                WebSocketGenerator out = (iter.hasPrevious()?_extensions.get(iter.previousIndex()):_generator);
+
+                Extension extension = iter.next(); // increment iterator
+
+                // Wire up current inbound to next inbound (if present)
+                WebSocketParser.FrameHandler in = (iter.hasNext()?_extensions.get(iter.nextIndex()):inbound);
+
                 LOG.debug("Binding extension: " + extension);
-                extension.bind(
-                        _connection,
-                        e==extensions.size()-1? frameHandler :extensions.get(e+1),
-                        e==0?_generator:extensions.get(e-1));
-                e++;
+                extension.bind(_connection,in,out);
             }
+
+            // Important parts of chain
+            outbound = _extensions.getLast();
+            inbound = _extensions.getFirst();
         }
 
-        _outbound=(_extensions==null||_extensions.size()==0)?_generator:extensions.get(extensions.size()-1);
-        WebSocketParser.FrameHandler inbound = (_extensions == null || _extensions.size() == 0) ? frameHandler : extensions.get(0);
+        _outbound=outbound;
 
-        _parser = new WebSocketParserRFC6455(buffers, endpoint, inbound,maskgen==null);
+        _parser = new WebSocketParserRFC6455(buffers, endpoint, inbound, maskgen==null);
 
         _protocol=protocol;
 
