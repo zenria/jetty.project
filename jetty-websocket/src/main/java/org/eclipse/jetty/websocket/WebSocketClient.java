@@ -17,22 +17,16 @@ package org.eclipse.jetty.websocket;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.ProtocolException;
 import java.net.SocketAddress;
 import java.net.URI;
-import java.nio.channels.ByteChannel;
-import java.nio.channels.SocketChannel;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
-import org.eclipse.jetty.util.log.Logger;
 
 /* ------------------------------------------------------------ */
 /**
@@ -78,8 +72,6 @@ import org.eclipse.jetty.util.log.Logger;
  */
 public class WebSocketClient
 {
-    private final static Logger LOG = org.eclipse.jetty.util.log.Log.getLogger(WebSocketClient.class.getName());
-
     private final WebSocketClientFactory _factory;
     private final Map<String, String> _cookies = new ConcurrentHashMap<String, String>();
     private final List<String> _requestedExtensions = new CopyOnWriteArrayList<String>();
@@ -454,25 +446,8 @@ public class WebSocketClient
         {
             throw new IllegalStateException("Factory !started");
         }
-
-        // Let extensions process ClientExtension.establishConnection()
-
-        LOG.debug("Opening websocket connection to " + uri + " (client websocket impl: " + websocket + ")");
-
-        InetSocketAddress address = toSocketAddress(uri);
-
-        SocketChannel channel = SocketChannel.open();
-        if (_bindAddress != null)
-            channel.socket().bind(_bindAddress);
-        channel.socket().setTcpNoDelay(true);
-
-        WebSocketFuture holder = new WebSocketFuture(websocket,uri,this,channel);
-
-        channel.configureBlocking(false);
-        channel.connect(address);
-        _factory.getSelectorManager().register(channel,holder);
-
-        return holder;
+        
+        return _factory.requestConnection(this, uri, websocket);
     }
 
     public static InetSocketAddress toSocketAddress(URI uri)
@@ -487,239 +462,5 @@ public class WebSocketClient
             port = "ws".equals(scheme)?80:443;
 
         return new InetSocketAddress(uri.getHost(),port);
-    }
-
-    /* ------------------------------------------------------------ */
-    /**
-     * The Future Websocket Connection.
-     */
-    static class WebSocketFuture implements Future<WebSocket.Connection>
-    {
-        final WebSocket _websocket;
-        final URI _uri;
-        final WebSocketClient _client;
-        final CountDownLatch _done = new CountDownLatch(1);
-        ByteChannel _channel;
-        WebSocketConnection _connection;
-        Throwable _exception;
-
-        private WebSocketFuture(WebSocket websocket, URI uri, WebSocketClient client, ByteChannel channel)
-        {
-            _websocket = websocket;
-            _uri = uri;
-            _client = client;
-            _channel = channel;
-        }
-
-        public void onConnection(WebSocketConnection connection)
-        {
-            try
-            {
-                _client.getFactory().addConnection(connection);
-
-                connection.getConnection().setMaxTextMessageSize(_client.getMaxTextMessageSize());
-                connection.getConnection().setMaxBinaryMessageSize(_client.getMaxBinaryMessageSize());
-
-                WebSocketConnection con;
-                synchronized (this)
-                {
-                    if (_channel != null)
-                        _connection = connection;
-                    con = _connection;
-                }
-
-                if (con != null)
-                {
-                    if (_websocket instanceof WebSocket.OnFrame)
-                        ((WebSocket.OnFrame)_websocket).onHandshake((WebSocket.FrameConnection)con.getConnection());
-
-                    _websocket.onOpen(con.getConnection());
-                }
-            }
-            finally
-            {
-                _done.countDown();
-            }
-        }
-
-        public void handshakeFailed(Throwable ex)
-        {
-            try
-            {
-                ByteChannel channel = null;
-                synchronized (this)
-                {
-                    if (_channel != null)
-                    {
-                        channel = _channel;
-                        _channel = null;
-                        _exception = ex;
-                    }
-                }
-
-                if (channel != null)
-                {
-                    if (ex instanceof ProtocolException)
-                        closeChannel(channel,WebSocketConnectionRFC6455.CLOSE_PROTOCOL,ex.getMessage());
-                    else
-                        closeChannel(channel,WebSocketConnectionRFC6455.CLOSE_NO_CLOSE,ex.getMessage());
-                }
-            }
-            finally
-            {
-                _done.countDown();
-            }
-        }
-
-        public Map<String, String> getCookies()
-        {
-            return _client.getCookies();
-        }
-
-        public String getProtocol()
-        {
-            return _client.getProtocol();
-        }
-
-        public WebSocket getWebSocket()
-        {
-            return _websocket;
-        }
-
-        public URI getURI()
-        {
-            return _uri;
-        }
-
-        public int getMaxIdleTime()
-        {
-            return _client.getMaxIdleTime();
-        }
-
-        public String getOrigin()
-        {
-            return _client.getOrigin();
-        }
-
-        public MaskGen getMaskGen()
-        {
-            return _client.getMaskGen();
-        }
-
-        public List<String> getExtensions()
-        {
-            return _client.getExtensions();
-        }
-
-        @Override
-        public String toString()
-        {
-            return "[" + _uri + "," + _websocket + "]@" + hashCode();
-        }
-
-        public boolean cancel(boolean mayInterruptIfRunning)
-        {
-            try
-            {
-                ByteChannel channel = null;
-                synchronized (this)
-                {
-                    if (_connection == null && _exception == null && _channel != null)
-                    {
-                        channel = _channel;
-                        _channel = null;
-                    }
-                }
-
-                if (channel != null)
-                {
-                    closeChannel(channel,WebSocketConnectionRFC6455.CLOSE_NO_CLOSE,"cancelled");
-                    return true;
-                }
-                return false;
-            }
-            finally
-            {
-                _done.countDown();
-            }
-        }
-
-        public boolean isCancelled()
-        {
-            synchronized (this)
-            {
-                return _channel == null && _connection == null;
-            }
-        }
-
-        public boolean isDone()
-        {
-            synchronized (this)
-            {
-                return _connection != null && _exception == null;
-            }
-        }
-
-        public org.eclipse.jetty.websocket.WebSocket.Connection get() throws InterruptedException, ExecutionException
-        {
-            try
-            {
-                return get(Long.MAX_VALUE,TimeUnit.SECONDS);
-            }
-            catch (TimeoutException e)
-            {
-                throw new IllegalStateException("The universe has ended",e);
-            }
-        }
-
-        public org.eclipse.jetty.websocket.WebSocket.Connection get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException,
-                TimeoutException
-        {
-            _done.await(timeout,unit);
-            ByteChannel channel = null;
-            org.eclipse.jetty.websocket.WebSocket.Connection connection = null;
-            Throwable exception;
-            synchronized (this)
-            {
-                exception = _exception;
-                if (_connection == null)
-                {
-                    exception = _exception;
-                    channel = _channel;
-                    _channel = null;
-                }
-                else
-                    connection = _connection.getConnection();
-            }
-
-            if (channel != null)
-                closeChannel(channel,WebSocketConnectionRFC6455.CLOSE_NO_CLOSE,"timeout");
-            if (exception != null)
-                throw new ExecutionException(exception);
-            if (connection != null)
-                return connection;
-            throw new TimeoutException();
-        }
-
-        private void closeChannel(ByteChannel channel, int code, String message)
-        {
-            try
-            {
-                _websocket.onClose(code,message);
-            }
-            catch (Exception e)
-            {
-                LOG.warn(e);
-            }
-
-            try
-            {
-                channel.close();
-            }
-            catch (IOException e)
-            {
-                LOG.debug(e);
-            }
-        }
     }
 }

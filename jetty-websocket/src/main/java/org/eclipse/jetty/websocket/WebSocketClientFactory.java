@@ -17,14 +17,18 @@ package org.eclipse.jetty.websocket;
 
 import java.io.EOFException;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.ProtocolException;
+import java.net.URI;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Random;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Future;
 
 import javax.net.ssl.SSLEngine;
 
@@ -56,12 +60,17 @@ import org.eclipse.jetty.websocket.extensions.ExtensionManager;
 
 /* ------------------------------------------------------------ */
 /**
- * <p>WebSocketClientFactory contains the common components needed by multiple {@link WebSocketClient} instances
- * (for example, a {@link ThreadPool}, a {@link SelectorManager NIO selector}, etc).</p>
- * <p>WebSocketClients with different configurations should share the same factory to avoid to waste resources.</p>
- * <p>If a ThreadPool or MaskGen is passed in the constructor, then it is not added with {@link AggregateLifeCycle#addBean(Object)},
- * so it's lifecycle must be controlled externally.
- *
+ * <p>
+ * WebSocketClientFactory contains the common components needed by multiple {@link WebSocketClient} instances (for
+ * example, a {@link ThreadPool}, a {@link SelectorManager NIO selector}, etc).
+ * </p>
+ * <p>
+ * WebSocketClients with different configurations should share the same factory to avoid to waste resources.
+ * </p>
+ * <p>
+ * If a ThreadPool or MaskGen is passed in the constructor, then it is not added with
+ * {@link AggregateLifeCycle#addBean(Object)}, so it's lifecycle must be controlled externally.
+ * 
  * @see WebSocketClient
  */
 public class WebSocketClientFactory extends AggregateLifeCycle
@@ -77,10 +86,14 @@ public class WebSocketClientFactory extends AggregateLifeCycle
     private final ExtensionManager _extensionManager = new ExtensionManager();
     private MaskGen _maskGen;
     private WebSocketBuffers _buffers;
+    private List<EstablishConnectionHandler> _establishConnectionHandlers;
+    private EstablishConnectionHandler _establishConnectionDefault;
 
     /* ------------------------------------------------------------ */
     /**
-     * <p>Creates a WebSocketClientFactory with the default configuration.</p>
+     * <p>
+     * Creates a WebSocketClientFactory with the default configuration.
+     * </p>
      */
     public WebSocketClientFactory()
     {
@@ -89,35 +102,47 @@ public class WebSocketClientFactory extends AggregateLifeCycle
 
     /* ------------------------------------------------------------ */
     /**
-     * <p>Creates a WebSocketClientFactory with the given ThreadPool and the default configuration.</p>
-     *
-     * @param threadPool the ThreadPool instance to use
+     * <p>
+     * Creates a WebSocketClientFactory with the given ThreadPool and the default configuration.
+     * </p>
+     * 
+     * @param threadPool
+     *            the ThreadPool instance to use
      */
     public WebSocketClientFactory(ThreadPool threadPool)
     {
-        this(threadPool, new RandomMaskGen());
+        this(threadPool,new RandomMaskGen());
     }
 
     /* ------------------------------------------------------------ */
     /**
-     * <p>Creates a WebSocketClientFactory with the given ThreadPool and the given MaskGen.</p>
-     *
-     * @param threadPool the ThreadPool instance to use
-     * @param maskGen    the MaskGen instance to use
+     * <p>
+     * Creates a WebSocketClientFactory with the given ThreadPool and the given MaskGen.
+     * </p>
+     * 
+     * @param threadPool
+     *            the ThreadPool instance to use
+     * @param maskGen
+     *            the MaskGen instance to use
      */
     public WebSocketClientFactory(ThreadPool threadPool, MaskGen maskGen)
     {
-        this(threadPool, maskGen, 8192);
+        this(threadPool,maskGen,8192);
     }
 
     /* ------------------------------------------------------------ */
 
     /**
-     * <p>Creates a WebSocketClientFactory with the specified configuration.</p>
-     *
-     * @param threadPool the ThreadPool instance to use
-     * @param maskGen    the mask generator to use
-     * @param bufferSize the read buffer size
+     * <p>
+     * Creates a WebSocketClientFactory with the specified configuration.
+     * </p>
+     * 
+     * @param threadPool
+     *            the ThreadPool instance to use
+     * @param maskGen
+     *            the mask generator to use
+     * @param bufferSize
+     *            the read buffer size
      */
     public WebSocketClientFactory(ThreadPool threadPool, MaskGen maskGen, int bufferSize)
     {
@@ -136,6 +161,12 @@ public class WebSocketClientFactory extends AggregateLifeCycle
         addBean(_selector);
 
         addBean(_sslContextFactory);
+
+        _establishConnectionHandlers = new ArrayList<EstablishConnectionHandler>();
+
+        // Could be the last entry on _establishConnectionHandlers, but just didn't want it to move
+        // around in the order of the list or be deleted, or have the list be cleared.
+        _establishConnectionDefault = new StandardClientConnection();
     }
 
     /* ------------------------------------------------------------ */
@@ -150,7 +181,7 @@ public class WebSocketClientFactory extends AggregateLifeCycle
     /* ------------------------------------------------------------ */
     /**
      * Get the selectorManager. Used to configure the manager.
-     *
+     * 
      * @return The {@link SelectorManager} instance.
      */
     public SelectorManager getSelectorManager()
@@ -160,9 +191,8 @@ public class WebSocketClientFactory extends AggregateLifeCycle
 
     /* ------------------------------------------------------------ */
     /**
-     * Get the ThreadPool.
-     * Used to set/query the thread pool configuration.
-     *
+     * Get the ThreadPool. Used to set/query the thread pool configuration.
+     * 
      * @return The {@link ThreadPool}
      */
     public ThreadPool getThreadPool()
@@ -182,7 +212,8 @@ public class WebSocketClientFactory extends AggregateLifeCycle
 
     /* ------------------------------------------------------------ */
     /**
-     * @param maskGen the shared mask generator, or null if no shared mask generator is used
+     * @param maskGen
+     *            the shared mask generator, or null if no shared mask generator is used
      * @see WebSocketClient#setMaskGen(MaskGen)
      */
     public void setMaskGen(MaskGen maskGen)
@@ -193,7 +224,7 @@ public class WebSocketClientFactory extends AggregateLifeCycle
         _maskGen = maskGen;
         addBean(maskGen);
     }
-    
+
     /* ------------------------------------------------------------ */
     /**
      * @return The Registered Extensions Manager
@@ -205,7 +236,8 @@ public class WebSocketClientFactory extends AggregateLifeCycle
 
     /* ------------------------------------------------------------ */
     /**
-     * @param bufferSize the read buffer size
+     * @param bufferSize
+     *            the read buffer size
      * @see #getBufferSize()
      */
     public void setBufferSize(int bufferSize)
@@ -235,9 +267,11 @@ public class WebSocketClientFactory extends AggregateLifeCycle
 
     /* ------------------------------------------------------------ */
     /**
-     * <p>Creates and returns a new instance of a {@link WebSocketClient}, configured with this
-     * WebSocketClientFactory instance.</p>
-     *
+     * <p>
+     * Creates and returns a new instance of a {@link WebSocketClient}, configured with this WebSocketClientFactory
+     * instance.
+     * </p>
+     * 
      * @return a new {@link WebSocketClient} instance
      */
     public WebSocketClient newWebSocketClient()
@@ -252,7 +286,7 @@ public class WebSocketClientFactory extends AggregateLifeCycle
         {
             String peerHost = channel.socket().getInetAddress().getHostAddress();
             int peerPort = channel.socket().getPort();
-            sslEngine = _sslContextFactory.newSslEngine(peerHost, peerPort);
+            sslEngine = _sslContextFactory.newSslEngine(peerHost,peerPort);
         }
         else
         {
@@ -295,23 +329,23 @@ public class WebSocketClientFactory extends AggregateLifeCycle
         @Override
         protected SelectChannelEndPoint newEndPoint(SocketChannel channel, SelectSet selectSet, final SelectionKey key) throws IOException
         {
-            WebSocketClient.WebSocketFuture holder = (WebSocketClient.WebSocketFuture)key.attachment();
+            WebSocketClientConnectionFuture holder = (WebSocketClientConnectionFuture)key.attachment();
             int maxIdleTime = holder.getMaxIdleTime();
             if (maxIdleTime < 0)
                 maxIdleTime = (int)getMaxIdleTime();
-            SelectChannelEndPoint result = new SelectChannelEndPoint(channel, selectSet, key, maxIdleTime);
+            SelectChannelEndPoint result = new SelectChannelEndPoint(channel,selectSet,key,maxIdleTime);
             AsyncEndPoint endPoint = result;
 
             // Detect if it is SSL, and wrap the connection if so
             if ("wss".equals(holder.getURI().getScheme()))
             {
                 SSLEngine sslEngine = newSslEngine(channel);
-                SslConnection sslConnection = new SslConnection(sslEngine, endPoint);
+                SslConnection sslConnection = new SslConnection(sslEngine,endPoint);
                 endPoint.setConnection(sslConnection);
                 endPoint = sslConnection.getSslEndPoint();
             }
 
-            AsyncConnection connection = selectSet.getManager().newConnection(channel, endPoint, holder);
+            AsyncConnection connection = selectSet.getManager().newConnection(channel,endPoint,holder);
             endPoint.setConnection(connection);
 
             return result;
@@ -320,8 +354,8 @@ public class WebSocketClientFactory extends AggregateLifeCycle
         @Override
         public AsyncConnection newConnection(SocketChannel channel, AsyncEndPoint endpoint, Object attachment)
         {
-            WebSocketClient.WebSocketFuture holder = (WebSocketClient.WebSocketFuture)attachment;
-            return new HandshakeConnection(endpoint, holder);
+            WebSocketClientConnectionFuture holder = (WebSocketClientConnectionFuture)attachment;
+            return new HandshakeConnection(endpoint,holder);
         }
 
         @Override
@@ -333,7 +367,7 @@ public class WebSocketClientFactory extends AggregateLifeCycle
         @Override
         protected void endPointUpgraded(ConnectedEndPoint endpoint, Connection oldConnection)
         {
-            LOG.debug("upgrade {} -> {}", oldConnection, endpoint.getConnection());
+            LOG.debug("upgrade {} -> {}",oldConnection,endpoint.getConnection());
         }
 
         @Override
@@ -345,12 +379,12 @@ public class WebSocketClientFactory extends AggregateLifeCycle
         @Override
         protected void connectionFailed(SocketChannel channel, Throwable ex, Object attachment)
         {
-            if (!(attachment instanceof WebSocketClient.WebSocketFuture))
-                super.connectionFailed(channel, ex, attachment);
+            if (!(attachment instanceof WebSocketClientConnectionFuture))
+                super.connectionFailed(channel,ex,attachment);
             else
             {
                 LOG.debug(ex);
-                WebSocketClient.WebSocketFuture future = (WebSocketClient.WebSocketFuture)attachment;
+                WebSocketClientConnectionFuture future = (WebSocketClientConnectionFuture)attachment;
 
                 future.handshakeFailed(ex);
             }
@@ -359,13 +393,12 @@ public class WebSocketClientFactory extends AggregateLifeCycle
 
     /* ------------------------------------------------------------ */
     /**
-     * Handshake Connection.
-     * Handles the connection until the handshake succeeds or fails.
+     * Handshake Connection. Handles the connection until the handshake succeeds or fails.
      */
     class HandshakeConnection extends AbstractConnection implements AsyncConnection
     {
         private final AsyncEndPoint _endp;
-        private final WebSocketClient.WebSocketFuture _future;
+        private final AbstractWebSocketClientConnection _future;
         private final String _key;
         private final HttpParser _parser;
         private String _accept;
@@ -373,9 +406,9 @@ public class WebSocketClientFactory extends AggregateLifeCycle
         private String _acknowledgedExtensions;
         private ByteArrayBuffer _handshake;
 
-        public HandshakeConnection(AsyncEndPoint endpoint, WebSocketClient.WebSocketFuture future)
+        public HandshakeConnection(AsyncEndPoint endpoint, AbstractWebSocketClientConnection future)
         {
-            super(endpoint, System.currentTimeMillis());
+            super(endpoint,System.currentTimeMillis());
             _endp = endpoint;
             _future = future;
 
@@ -383,8 +416,8 @@ public class WebSocketClientFactory extends AggregateLifeCycle
             new Random().nextBytes(bytes);
             _key = new String(B64Code.encode(bytes));
 
-            Buffers buffers = new SimpleBuffers(_buffers.getBuffer(), null);
-            _parser = new HttpParser(buffers, _endp, new HttpParser.EventHandler()
+            Buffers buffers = new SimpleBuffers(_buffers.getBuffer(),null);
+            _parser = new HttpParser(buffers,_endp,new HttpParser.EventHandler()
             {
                 @Override
                 public void startResponse(Buffer version, int status, Buffer reason) throws IOException
@@ -429,7 +462,7 @@ public class WebSocketClientFactory extends AggregateLifeCycle
 
         private boolean handshake()
         {
-            if (_handshake==null)
+            if (_handshake == null)
             {
                 String path = _future.getURI().getPath();
                 if (path == null || path.length() == 0)
@@ -462,7 +495,7 @@ public class WebSocketClientFactory extends AggregateLifeCycle
                 {
                     request.append("Sec-WebSocket-Protocol: ").append(_future.getProtocol()).append("\r\n");
                 }
-                
+
                 if ((_future.getExtensions() != null) && (!_future.getExtensions().isEmpty()))
                 {
                     request.append("Sec-WebSocket-Extensions: ");
@@ -484,37 +517,34 @@ public class WebSocketClientFactory extends AggregateLifeCycle
                 {
                     for (String cookie : cookies.keySet())
                     {
-                        request.append("Cookie: ")
-                        .append(QuotedStringTokenizer.quoteIfNeeded(cookie, HttpFields.__COOKIE_DELIM))
-                        .append("=")
-                        .append(QuotedStringTokenizer.quoteIfNeeded(cookies.get(cookie), HttpFields.__COOKIE_DELIM))
-                        .append("\r\n");
+                        request.append("Cookie: ").append(QuotedStringTokenizer.quoteIfNeeded(cookie,HttpFields.__COOKIE_DELIM)).append("=")
+                                .append(QuotedStringTokenizer.quoteIfNeeded(cookies.get(cookie),HttpFields.__COOKIE_DELIM)).append("\r\n");
                     }
                 }
 
                 request.append("\r\n");
 
-                _handshake=new ByteArrayBuffer(request.toString(), false);
+                _handshake = new ByteArrayBuffer(request.toString(),false);
             }
-            
+
             try
             {
                 int flushed = _endp.flush(_handshake);
-                if (flushed<0)
+                if (flushed < 0)
                     throw new IOException("incomplete handshake");
             }
             catch (IOException e)
             {
                 _future.handshakeFailed(e);
             }
-            return _handshake.length()==0;
+            return _handshake.length() == 0;
         }
 
         public Connection handle() throws IOException
         {
             while (_endp.isOpen() && !_parser.isComplete())
             {
-                if (_handshake==null || _handshake.length()>0)
+                if (_handshake == null || _handshake.length() > 0)
                     if (!handshake())
                         return this;
 
@@ -557,27 +587,18 @@ public class WebSocketClientFactory extends AggregateLifeCycle
         private WebSocketConnection newWebSocketConnection() throws IOException
         {
             List<Extension> extensions = null;
-            
+
             if (_acknowledgedExtensions != null)
             {
                 extensions = _extensionManager.initExtensions(_acknowledgedExtensions,Extension.Mode.CLIENT);
             }
-            
+
             LOG.debug("Extensions: " + extensions);
-            
-            return new WebSocketClientConnection(
-                    _future._client.getFactory(),
-                    _future.getWebSocket(),
-                    _endp,
-                    _buffers,
-                    System.currentTimeMillis(),
-                    _future.getMaxIdleTime(),
-                    _future.getProtocol(),
-                    extensions,
-                    WebSocketConnectionRFC6455.VERSION,
-                    _future.getMaskGen());
+
+            return new WebSocketClientConnection(_future.getClient().getFactory(),_future.getWebSocket(),_endp,_buffers,System.currentTimeMillis(),
+                    _future.getMaxIdleTime(),_future.getProtocol(),extensions,WebSocketConnectionRFC6455.VERSION,_future.getMaskGen());
         }
-        
+
         public void onInputShutdown() throws IOException
         {
             _endp.close();
@@ -610,9 +631,10 @@ public class WebSocketClientFactory extends AggregateLifeCycle
     {
         private final WebSocketClientFactory factory;
 
-        public WebSocketClientConnection(WebSocketClientFactory factory, WebSocket webSocket, EndPoint endPoint, WebSocketBuffers buffers, long timeStamp, int maxIdleTime, String protocol, List<Extension> extensions, int draftVersion, MaskGen maskGen) throws IOException
+        public WebSocketClientConnection(WebSocketClientFactory factory, WebSocket webSocket, EndPoint endPoint, WebSocketBuffers buffers, long timeStamp,
+                int maxIdleTime, String protocol, List<Extension> extensions, int draftVersion, MaskGen maskGen) throws IOException
         {
-            super(webSocket, endPoint, buffers, timeStamp, maxIdleTime, protocol, extensions, draftVersion, maskGen);
+            super(webSocket,endPoint,buffers,timeStamp,maxIdleTime,protocol,extensions,draftVersion,maskGen);
             this.factory = factory;
         }
 
@@ -621,6 +643,85 @@ public class WebSocketClientFactory extends AggregateLifeCycle
         {
             super.onClose();
             factory.removeConnection(this);
+        }
+    }
+
+    /**
+     * Interface for handling the establishment of connections, be they virtual/logical/physical.
+     */
+    public interface EstablishConnectionHandler
+    {
+        Future<WebSocket.Connection> establishConnection(WebSocketClient client, URI uri, WebSocket websocket) throws IOException;
+    }
+    
+    public void addEstablishConnectionHandler(EstablishConnectionHandler connHandler)
+    {
+        _establishConnectionHandlers.add(connHandler);
+    }
+    
+    public boolean removeEstablishConnectionHandler(EstablishConnectionHandler connHandler)
+    {
+        return _establishConnectionHandlers.remove(connHandler);
+    }
+
+    /**
+     * Request a connection.
+     * <p>
+     * Results in a connection for the remote websocket uri. There is no guarantee of success (network / connection /
+     * handshake issues) or that the connection will even be a physical connection (extensions).
+     * <p>
+     * Standard {@link Future} processes are available for timing out your connection request.
+     * 
+     * @param client
+     *            the client requesting the connection
+     * @param uri
+     *            the uri being requested to
+     * @param websocket
+     *            the websocket implementation to bind to connection
+     * @return the potential connection
+     * @throws IOException if a fundamental IO error occurs
+     */
+    public Future<WebSocket.Connection> requestConnection(WebSocketClient client, URI uri, WebSocket websocket) throws IOException
+    {
+        LOG.debug("Requesting websocket connection to " + uri + " (client websocket impl: " + websocket + ")");
+
+        Future<WebSocket.Connection> futConn = null;
+        for (EstablishConnectionHandler connHandler : _establishConnectionHandlers)
+        {
+            futConn = connHandler.establishConnection(client,uri,websocket);
+            if (futConn != null)
+            {
+                return futConn;
+            }
+        }
+
+        return _establishConnectionDefault.establishConnection(client,uri,websocket);
+    }
+
+    /**
+     * Standard Client Websocket Connection, using a new physical Socket connection to the remote server.
+     */
+    static class StandardClientConnection implements EstablishConnectionHandler
+    {
+        public Future<WebSocket.Connection> establishConnection(WebSocketClient client, URI uri, WebSocket websocket) throws IOException
+        {
+            InetSocketAddress address = WebSocketClient.toSocketAddress(uri);
+
+            SocketChannel channel = SocketChannel.open();
+
+            if (client.getBindAddress() != null)
+            {
+                channel.socket().bind(client.getBindAddress());
+            }
+            channel.socket().setTcpNoDelay(true);
+
+            WebSocketClientConnectionFuture holder = new WebSocketClientConnectionFuture(websocket,uri,client,channel);
+
+            channel.configureBlocking(false);
+            channel.connect(address);
+            client.getFactory().getSelectorManager().register(channel,holder);
+
+            return holder;
         }
     }
 }

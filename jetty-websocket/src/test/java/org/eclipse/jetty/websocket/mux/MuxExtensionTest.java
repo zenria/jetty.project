@@ -121,7 +121,7 @@ public class MuxExtensionTest
 
         try
         {
-            // Mimicing the Example found in the MUX spec 02 (section 8)
+            // Mimicing the Example found in the MUX spec 03 (section 8)
             // http://tools.ietf.org/html/draft-tamplin-hybi-google-mux-02#section-8
             conn1 = client.open(serverUri,new NoopWebSocket(),2,TimeUnit.SECONDS);
             conn2 = client.open(serverUri,new NoopWebSocket(),2,TimeUnit.SECONDS);

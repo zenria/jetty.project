@@ -169,6 +169,10 @@ public abstract class MuxedConnection implements Connection, WebSocket
         return 0;
     }
 
+    /**
+     * Return a channel number as unreserved.
+     * @param channelNum
+     */
     protected void relenquishChannelNum(int channelNum)
     {
         
