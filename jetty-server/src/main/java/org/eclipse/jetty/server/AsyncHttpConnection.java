@@ -82,17 +82,27 @@ public class AsyncHttpConnection extends AbstractHttpConnection implements Async
                     else if (!_parser.isComplete() && _parser.parseAvailable())
                         progress=true;
 
-                    // Generate more output
-                    if (_generator.isCommitted() && !_generator.isComplete() && !_endp.isOutputShutdown())
-                        if (_generator.flushBuffer()>0)
-                            progress=true;
+                    if (_request.getAsyncContinuation().isAsyncStarted())
+                    {
+                        // The request is suspended, so even though progress has been made,
+                        // exit the while loop by setting progress to false
+                        LOG.debug("suspended {}", this);
+                        progress = false;
+                    }
+                    else
+                    {
+                        // Generate more output
+                        if (_generator.isCommitted() && !_generator.isComplete() && !_endp.isOutputShutdown())
+                            if (_generator.flushBuffer() > 0)
+                                progress = true;
 
-                    // Flush output
-                    _endp.flush();
+                        // Flush output
+                        _endp.flush();
 
-                    // Has any IO been done by the endpoint itself since last loop
-                    if (_asyncEndp.hasProgressed())
-                        progress=true;
+                        // Has any IO been done by the endpoint itself since last loop
+                        if (_asyncEndp.hasProgressed())
+                            progress = true;
+                    }
                 }
                 catch (HttpException e)
                 {
@@ -108,50 +118,53 @@ public class AsyncHttpConnection extends AbstractHttpConnection implements Async
                 finally
                 {
                     some_progress|=progress;
-                    //  Is this request/response round complete and are fully flushed?
-                    boolean parserComplete = _parser.isComplete();
-                    boolean generatorComplete = _generator.isComplete();
-                    boolean complete = parserComplete && generatorComplete;
-                    if (parserComplete)
+                    if (!_request.getAsyncContinuation().isAsyncStarted())
                     {
-                        if (generatorComplete)
+                        //  Is this request/response round complete and are fully flushed?
+                        boolean parserComplete = _parser.isComplete();
+                        boolean generatorComplete = _generator.isComplete();
+                        boolean complete = parserComplete && generatorComplete;
+                        if (parserComplete)
                         {
-                            // Reset the parser/generator
-                            progress=true;
-
-                            // look for a switched connection instance?
-                            if (_response.getStatus()==HttpStatus.SWITCHING_PROTOCOLS_101)
+                            if (generatorComplete)
                             {
-                                Connection switched=(Connection)_request.getAttribute("org.eclipse.jetty.io.Connection");
-                                if (switched!=null)
-                                    connection=switched;
+                                // Reset the parser/generator
+                                progress = true;
+
+                                // look for a switched connection instance?
+                                if (_response.getStatus() == HttpStatus.SWITCHING_PROTOCOLS_101)
+                                {
+                                    Connection switched = (Connection)_request.getAttribute("org.eclipse.jetty.io.Connection");
+                                    if (switched != null)
+                                        connection = switched;
+                                }
+
+                                reset();
+
+                                // TODO Is this still required?
+                                if (!_generator.isPersistent() && !_endp.isOutputShutdown())
+                                {
+                                    LOG.warn("Safety net oshut!!!  IF YOU SEE THIS, PLEASE RAISE BUGZILLA");
+                                    _endp.shutdownOutput();
+                                }
                             }
-
-                            reset();
-
-                            // TODO Is this still required?
-                            if (!_generator.isPersistent() && !_endp.isOutputShutdown())
+                            else
                             {
-                                LOG.warn("Safety net oshut!!!  IF YOU SEE THIS, PLEASE RAISE BUGZILLA");
-                                _endp.shutdownOutput();
+                                // We have finished parsing, but not generating so
+                                // we must not be interested in reading until we
+                                // have finished generating and we reset the generator
+                                _readInterested = false;
+                                LOG.debug("Disabled read interest while writing response {}", _endp);
                             }
                         }
-                        else
-                        {
-                            // We have finished parsing, but not generating so
-                            // we must not be interested in reading until we
-                            // have finished generating and we reset the generator
-                            _readInterested = false;
-                            LOG.debug("Disabled read interest while writing response {}", _endp);
-                        }
-                    }
 
-                    if (!complete && _request.getAsyncContinuation().isAsyncStarted())
-                    {
-                        // The request is suspended, so even though progress has been made,
-                        // exit the while loop by setting progress to false
-                        LOG.debug("suspended {}",this);
-                        progress=false;
+                        //                        if (!complete && _request.getAsyncContinuation().isAsyncStarted())
+                        //                        {
+                        //                            // The request is suspended, so even though progress has been made,
+                        //                            // exit the while loop by setting progress to false
+                        //                            LOG.debug("suspended {}",this);
+                        //                            progress=false;
+                        //                        }
                     }
                 }
             }
