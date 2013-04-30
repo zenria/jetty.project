@@ -1050,10 +1050,21 @@ public class HttpParser
     private void consumeCRLF(byte ch, ByteBuffer buffer)
     {
         _eol=ch;
-        if (_eol==HttpTokens.CARRIAGE_RETURN && buffer.hasRemaining() && buffer.get(buffer.position())==HttpTokens.LINE_FEED)
+        while (_eol == HttpTokens.CARRIAGE_RETURN && buffer.hasRemaining())
         {
-            buffer.get();
-            _eol=0;
+            ch = buffer.get(buffer.position());
+            if (ch == HttpTokens.LINE_FEED)
+            {
+                buffer.get();
+                _eol = 0;
+            } 
+            else if (ch == HttpTokens.CARRIAGE_RETURN) 
+            {
+                // here we should send a 400 BAD REQUEST instead of doing this hack
+                buffer.get();
+                _eol = ch;
+            }
+
         }
     }
 
